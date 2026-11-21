@@ -1,0 +1,4061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>狂野无限 · APEX OVERDRIVE | 3D 无限车道超跑狂飙</title>
+  <!-- Three.js r128 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    /* ==========================================================================
+       全局基础样式与移动端全屏触控保护
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #030712;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Inter", sans-serif;
+      color: #f8fafc;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    #game-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #webgl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #fx-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    /* ==========================================================================
+       极简奢华赛博玻璃拟态组件 (Cyber Glassmorphism)
+       ========================================================================== */
+    .glass {
+      background: rgba(6, 12, 28, 0.52);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+    }
+
+    .btn-glass {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: rgba(8, 16, 36, 0.62);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: transform 0.14s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      pointer-events: auto;
+      white-space: nowrap;
+    }
+
+    .btn-glass:hover {
+      background: rgba(24, 48, 86, 0.82);
+      border-color: rgba(56, 189, 248, 0.72);
+    }
+
+    .btn-glass:active {
+      transform: scale(0.93);
+    }
+
+    .btn-glass.active {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.9), rgba(99, 102, 241, 0.85));
+      border-color: rgba(186, 230, 253, 0.95);
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.55);
+    }
+
+    .btn-hero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 42px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 48%, #ec4899 100%);
+      border: 1px solid rgba(255, 255, 255, 0.52);
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      cursor: pointer;
+      box-shadow: 0 14px 40px rgba(239, 68, 68, 0.52), inset 0 1px 1px rgba(255, 255, 255, 0.58);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .btn-hero:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 18px 48px rgba(249, 115, 22, 0.7);
+      filter: brightness(1.08);
+    }
+
+    .btn-hero:active {
+      transform: scale(0.95);
+    }
+
+    .btn-secondary-hero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 26px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(59, 130, 246, 0.45));
+      border: 1px solid rgba(125, 211, 252, 0.65);
+      color: #e0f2fe;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .btn-secondary-hero:hover {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.6), rgba(59, 130, 246, 0.68));
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
+    }
+
+    /* ==========================================================================
+       驾驶 HUD 抬头显示 (极简奢华赛博风，支持一键纯净隐藏)
+       ========================================================================== */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      transition: opacity 0.35s ease;
+    }
+
+    #hud.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.cinema-mode #hud .hud-hideable,
+    body.cinema-mode #touch-controls {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .hud-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    /* 左上：动感斜体时速表 + 车道坐标 + 免费无限氮气标识 */
+    .hud-speed-box {
+      padding: 10px 16px;
+      min-width: 176px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: opacity 0.3s ease;
+    }
+
+    .speed-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    #hud-speed {
+      font-size: 42px;
+      font-weight: 900;
+      font-style: italic;
+      line-height: 0.94;
+      letter-spacing: -1.8px;
+      background: linear-gradient(180deg, #ffffff 22%, #38bdf8 80%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #hud-speed.nitro-hot {
+      background: linear-gradient(180deg, #ffffff 12%, #fde047 55%, #f97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.7));
+    }
+
+    .unit-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.8px;
+    }
+
+    .rpm-bar-track {
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    #rpm-bar-fill {
+      height: 100%;
+      width: 45%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #06b6d4, #38bdf8, #f59e0b, #ef4444);
+      transition: width 0.08s linear;
+    }
+
+    .meta-tags {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 3px;
+    }
+
+    .mini-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid rgba(125, 211, 252, 0.36);
+      color: #e0f2fe;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-pill.gold {
+      background: rgba(245, 158, 11, 0.24);
+      border-color: rgba(251, 191, 36, 0.65);
+      color: #fef08a;
+    }
+
+    /* 中上：击毁统计、连击倍率、当前对手模式与里程 */
+    .hud-center-box {
+      padding: 9px 18px;
+      min-width: min(300px, 42vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.3s ease;
+    }
+
+    .center-row-1 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+    }
+
+    #hud-takedowns {
+      font-size: 15px;
+      font-weight: 900;
+      color: #fde047;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #hud-score {
+      font-size: 15px;
+      font-weight: 900;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .center-row-2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      gap: 8px;
+    }
+
+    #hud-mode-badge {
+      color: #67e8f9;
+      font-weight: 800;
+    }
+
+    /* 右上：快捷功能栏（全屏 / 车库 / 视角 / 纯净 / 音效 / 菜单） */
+    .hud-right-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .hud-quick-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 5px;
+      pointer-events: auto;
+    }
+
+    /* 折叠高级控制台抽屉 */
+    #drawer-panel {
+      width: min(334px, 90vw);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+      max-height: 76vh;
+      overflow-y: auto;
+      transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
+    }
+
+    #drawer-panel.closed {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.97);
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .drawer-title {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 1.2px;
+      margin-bottom: 5px;
+    }
+
+    .drawer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: #e2e8f0;
+    }
+
+    .seg-group {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 10px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg-btn {
+      padding: 5px 8px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.14s, color 0.14s;
+    }
+
+    .seg-btn.active {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: #ffffff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .choice-card {
+      padding: 7px 9px;
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      color: #f8fafc;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+
+    .choice-card:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(125, 211, 252, 0.55);
+    }
+
+    .choice-card.active {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.45), rgba(99, 102, 241, 0.42));
+      border-color: #7dd3fc;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+
+    .choice-card small {
+      display: block;
+      font-size: 9.5px;
+      color: #94a3b8;
+      margin-top: 1px;
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      width: 116px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* 底部状态栏（陀螺仪平衡仪 + 键位提示 + 360看车提示） */
+    .hud-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.3s ease;
+    }
+
+    #orbit-hint {
+      display: none;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(14, 165, 233, 0.35);
+      border: 1px solid rgba(125, 211, 252, 0.65);
+      font-size: 12px;
+      font-weight: 800;
+      color: #e0f2fe;
+    }
+
+    #orbit-hint.visible {
+      display: block;
+    }
+
+    #gyro-bar-pill {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 13px;
+      border-radius: 999px;
+      background: rgba(8, 17, 34, 0.62);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      pointer-events: auto;
+    }
+
+    #gyro-bar-pill.visible {
+      display: flex;
+    }
+
+    .gyro-track {
+      width: 108px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      position: relative;
+    }
+
+    .gyro-center {
+      position: absolute;
+      left: 50%;
+      top: -2px;
+      width: 2px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.55);
+      transform: translateX(-50%);
+    }
+
+    #gyro-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 12px #38bdf8;
+      transform: translate(-50%, -50%);
+    }
+
+    .mini-cal-btn {
+      border: 1px solid rgba(125, 211, 252, 0.55);
+      background: rgba(56, 189, 248, 0.25);
+      color: #e0f2fe;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .key-hints {
+      font-size: 11px;
+      color: rgba(241, 245, 249, 0.82);
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.88);
+      text-align: center;
+      padding: 4px 14px;
+      border-radius: 999px;
+      background: rgba(6, 12, 28, 0.42);
+    }
+
+    /* ==========================================================================
+       狂野击毁横幅 (TAKEDOWN / RAMPAGE / GODLIKE)
+       ========================================================================== */
+    #takedown-banner {
+      position: fixed;
+      top: 19%;
+      left: 50%;
+      transform: translate(-50%, -12px) scale(0.88);
+      z-index: 25;
+      pointer-events: none;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #takedown-banner.show {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    .td-title {
+      font-size: clamp(26px, 5.5vw, 44px);
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: 1.5px;
+      background: linear-gradient(180deg, #ffffff 15%, #fde047 60%, #f97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 6px 22px rgba(249, 115, 22, 0.82));
+      white-space: nowrap;
+    }
+
+    .td-sub {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f8fafc;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+      letter-spacing: 1px;
+      margin-top: 2px;
+    }
+
+    /* ==========================================================================
+       移动端触控与六大炫酷技能弧形排布
+       ========================================================================== */
+    #touch-controls {
+      position: fixed;
+      inset: 0;
+      z-index: 18;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #touch-controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .touch-left-stack {
+      position: fixed;
+      left: max(14px, env(safe-area-inset-left));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .touch-right-stack {
+      position: fixed;
+      right: max(14px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 9px;
+      pointer-events: none;
+    }
+
+    .touch-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .touch-fab {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      background: rgba(8, 16, 36, 0.56);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(255, 255, 255, 0.26);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 10.5px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+      pointer-events: auto;
+      cursor: pointer;
+      touch-action: none;
+      overflow: hidden;
+      transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .touch-fab .ico {
+      font-size: 19px;
+      line-height: 1;
+      z-index: 2;
+    }
+
+    .touch-fab .lbl {
+      font-size: 9.5px;
+      z-index: 2;
+      line-height: 1.1;
+    }
+
+    .touch-fab .cd-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      transform-origin: bottom;
+      transform: scaleY(0);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .touch-fab.pressed,
+    .touch-fab.locked {
+      transform: scale(0.91);
+      border-color: #ffffff;
+    }
+
+    /* 技能专属炫彩配色 */
+    .sk-spin   { border-color: rgba(56, 189, 248, 0.65); background: rgba(14, 165, 233, 0.24); }
+    .sk-emp    { border-color: rgba(168, 85, 247, 0.68); background: rgba(147, 51, 234, 0.24); }
+    .sk-miss   { border-color: rgba(244, 63, 94, 0.68);  background: rgba(225, 29, 72, 0.24); }
+    .sk-titan  { border-color: rgba(250, 204, 21, 0.72); background: rgba(234, 179, 8, 0.24); }
+    .sk-jump   { border-color: rgba(45, 212, 191, 0.72); background: rgba(13, 148, 136, 0.26); width: 68px; height: 68px; }
+    .sk-nitro  {
+      width: 78px; height: 78px;
+      border: 2px solid rgba(251, 146, 60, 0.88);
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.42), rgba(239, 68, 68, 0.45));
+      box-shadow: 0 0 24px rgba(249, 115, 22, 0.45);
+    }
+    .sk-nitro.pressed, .sk-nitro.locked {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      box-shadow: 0 0 34px rgba(249, 115, 22, 0.92);
+    }
+    .sk-steer  { width: 66px; height: 66px; }
+    .sk-steer.pressed { background: rgba(56, 189, 248, 0.65); box-shadow: 0 0 24px rgba(56, 189, 248, 0.72); }
+
+    .nitro-lock-pill {
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(8, 16, 36, 0.66);
+      border: 1px solid rgba(251, 146, 60, 0.55);
+      color: #fed7aa;
+      font-size: 11px;
+      font-weight: 800;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .nitro-lock-pill.active {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      border-color: #ffffff;
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(249, 115, 22, 0.7);
+    }
+
+    /* ==========================================================================
+       开场极简封面（悬浮于实时 3D 展台背景之上）
+       ========================================================================== */
+    #start-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(3, 7, 18, 0.72) 0%, rgba(3, 7, 18, 0.06) 44%, rgba(3, 7, 18, 0.78) 100%);
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+
+    #start-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .start-header {
+      text-align: center;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-kicker {
+      padding: 5px 15px;
+      border-radius: 999px;
+      background: rgba(249, 115, 22, 0.22);
+      border: 1px solid rgba(251, 146, 60, 0.55);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fed7aa;
+    }
+
+    .hero-title {
+      font-size: clamp(32px, 7.6vw, 56px);
+      font-weight: 900;
+      font-style: italic;
+      letter-spacing: 2px;
+      line-height: 1.05;
+      background: linear-gradient(180deg, #ffffff 18%, #bae6fd 65%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 8px 28px rgba(14, 165, 233, 0.45));
+    }
+
+    .hero-sub {
+      font-size: 13px;
+      color: #cbd5e1;
+      max-width: 520px;
+      line-height: 1.55;
+    }
+
+    .start-footer {
+      width: 100%;
+      max-width: 620px;
+      padding: 18px 20px;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .quick-mode-strip {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .start-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* ==========================================================================
+       360° 互动看车展厅 / 豪华车库面板
+       ========================================================================== */
+    #garage-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #garage-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .garage-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .garage-title-box {
+      padding: 12px 18px;
+      pointer-events: auto;
+      max-width: 360px;
+    }
+
+    .garage-car-name {
+      font-size: clamp(20px, 4.4vw, 28px);
+      font-weight: 900;
+      font-style: italic;
+      color: #ffffff;
+      line-height: 1.15;
+    }
+
+    .garage-car-desc {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+
+    .stat-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .stat-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .stat-line span:first-child {
+      width: 52px;
+    }
+
+    .stat-track {
+      flex: 1;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #06b6d4, #38bdf8, #a855f7);
+      transition: width 0.25s ease;
+    }
+
+    .garage-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .garage-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 16px;
+    }
+
+    .garage-tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .car-carousel {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .car-carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .car-chip {
+      flex: 0 0 auto;
+      min-width: 122px;
+      padding: 9px 12px;
+      border-radius: 13px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.14s, border-color 0.16s, background 0.16s;
+    }
+
+    .car-chip small {
+      display: block;
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .car-chip.active {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.42), rgba(99, 102, 241, 0.38));
+      border-color: #38bdf8;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.42);
+      color: #ffffff;
+    }
+
+    .swatch-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .swatch-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .swatch-lbl {
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      margin-right: 2px;
+    }
+
+    .swatch-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+    }
+
+    .swatch-dot.active {
+      transform: scale(1.18);
+      border-color: #ffffff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+    }
+
+    /* Toast 轻提示 */
+    #toast-box {
+      position: fixed;
+      bottom: 92px;
+      left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      z-index: 80;
+      padding: 10px 20px;
+      border-radius: 999px;
+      background: rgba(6, 12, 28, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      color: #f0f9ff;
+      font-size: 13px;
+      font-weight: 700;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      text-align: center;
+      max-width: 88vw;
+    }
+
+    #toast-box.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 响应式自适应 */
+    @media (max-width: 760px) {
+      .hud-top { flex-wrap: wrap; }
+      .hud-speed-box { padding: 8px 12px; min-width: 146px; }
+      #hud-speed { font-size: 32px; }
+      .hud-center-box { order: 3; width: 100%; padding: 7px 14px; }
+      .key-hints { display: none; }
+      .touch-fab { width: 58px; height: 58px; }
+      .sk-nitro { width: 70px; height: 70px; }
+      .sk-jump { width: 62px; height: 62px; }
+      .sk-steer { width: 60px; height: 60px; }
+    }
+
+    @media (min-width: 960px) {
+      body.desktop-device .touch-left-stack,
+      body.desktop-device .touch-right-stack {
+        opacity: 0.34;
+        transition: opacity 0.22s ease;
+      }
+      body.desktop-device .touch-left-stack:hover,
+      body.desktop-device .touch-right-stack:hover {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="webgl-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+  </div>
+
+  <!-- 驾驶 HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <!-- 左上：动感时速、档位、无限车道号、无敌战神标识 -->
+      <div class="glass hud-speed-box hud-hideable">
+        <div class="speed-line">
+          <span id="hud-speed">0</span>
+          <span class="unit-tag">KM/H</span>
+        </div>
+        <div class="rpm-bar-track"><div id="rpm-bar-fill"></div></div>
+        <div class="meta-tags">
+          <span id="hud-lane" class="mini-pill">无限车道 #0</span>
+          <span id="hud-nitro-pill" class="mini-pill gold">⚡ 无限氮气</span>
+        </div>
+      </div>
+
+      <!-- 中上：击毁数、积分、对手模式与行驶里程 -->
+      <div class="glass hud-center-box hud-hideable">
+        <div class="center-row-1">
+          <span id="hud-takedowns">💥 击毁 0</span>
+          <span id="hud-score">🏆 0</span>
+        </div>
+        <div class="center-row-2">
+          <span id="hud-mode-badge">🌐 全车型狂欢</span>
+          <span id="hud-dist">0.0 km</span>
+        </div>
+      </div>
+
+      <!-- 右上：全屏 / 车库赏车 / 视角 / 纯净 / 音效 / 菜单 -->
+      <div class="hud-right-col">
+        <div class="hud-quick-bar">
+          <button id="btn-fullscreen" class="btn-glass" title="一键全屏 (F)">⛶ 全屏</button>
+          <button id="btn-garage-hud" class="btn-glass hud-hideable" title="360° 车库赏车与换车 (G)">🏎️ 车库</button>
+          <button id="btn-cam-hud" class="btn-glass hud-hideable" title="切换4种视角含360°环绕看车 (C)">🎥 追拍</button>
+          <button id="btn-cinema" class="btn-glass" title="隐藏界面纯净狂飙 (H)">👁️ 纯净</button>
+          <button id="btn-audio" class="btn-glass active hud-hideable" title="静音开关 (M)">🔊</button>
+          <button id="btn-drawer" class="btn-glass hud-hideable" title="对手模式、场景与陀螺仪">☰ 菜单</button>
+        </div>
+
+        <!-- 高级控制抽屉 -->
+        <div id="drawer-panel" class="glass closed hud-hideable">
+          <div>
+            <div class="drawer-title">🎯 挑选对手模式 (RIVAL MODE)</div>
+            <div class="grid-2" id="drawer-modes">
+              <button class="choice-card active" data-mode="all">🌐 全车型狂欢<small>轿车/重卡/警车/超跑</small></button>
+              <button class="choice-card" data-mode="supercars">🏎️ 超跑军团争霸<small>满屏顶级超跑对决</small></button>
+              <button class="choice-card" data-mode="police">🚓 警车疯狂围剿<small>爆闪警队高速包抄</small></button>
+              <button class="choice-card" data-mode="trucks">🚛 重卡保龄球<small>18轮巨卡大巴乱撞</small></button>
+              <button class="choice-card" data-mode="boss" style="grid-column:span 2;border-color:rgba(250,204,21,0.5);">👑 皇冠宿敌狩猎<small>锁定追踪鎏金皇冠 BOSS 超跑</small></button>
+            </div>
+          </div>
+
+          <div>
+            <div class="drawer-title">🌆 五大天穹高速场景 (THEMES)</div>
+            <div class="grid-2" id="drawer-themes">
+              <button class="choice-card active" data-theme="0">🌃 赛博霓虹夜城<small>Cyber Metropolis</small></button>
+              <button class="choice-card" data-theme="1">🌅 黄金海岸落日<small>Golden Sunset</small></button>
+              <button class="choice-card" data-theme="2">🌌 极光冰川高速<small>Aurora Glacier</small></button>
+              <button class="choice-card" data-theme="3">🏜️ 鎏金大漠奇迹<small>Desert Mirage</small></button>
+              <button class="choice-card" data-theme="4" style="grid-column:span 2;">⛈️ 暴雨雷电暗夜<small>Thunderstorm + 闪电雨幕</small></button>
+            </div>
+          </div>
+
+          <div>
+            <div class="drawer-title">🎧 声效与电音伴奏</div>
+            <div class="drawer-row">
+              <span>赛博电音节拍</span>
+              <div class="seg-group">
+                <button class="seg-btn active" data-bgm="on">开启电音</button>
+                <button class="seg-btn" data-bgm="off">纯V12引擎</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="drawer-title">📱 手机陀螺仪倾斜转向</div>
+            <div class="drawer-row" style="margin-bottom:7px;">
+              <button id="btn-gyro-drawer" class="btn-glass" style="padding:5px 11px;">开启陀螺仪</button>
+              <button id="btn-cal-drawer" class="btn-glass" style="padding:5px 11px;">🧭 校准中心</button>
+            </div>
+            <div class="drawer-row">
+              <span id="gyro-sens-label">灵敏度 1.4x</span>
+              <input id="gyro-sens-range" type="range" min="0.5" max="2.6" step="0.1" value="1.4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部提示与陀螺仪平衡仪 -->
+    <div class="hud-bottom hud-hideable">
+      <div id="orbit-hint">🎥 360° 行进赏车模式：手指/鼠标拖拽环绕看车，滚轮缩放，自动巡航狂飙中</div>
+      <div id="gyro-bar-pill">
+        <span style="font-size:11px;color:#38bdf8;font-weight:800;">倾角</span>
+        <div class="gyro-track"><div class="gyro-center"></div><div id="gyro-dot"></div></div>
+        <button id="btn-cal-hud" class="mini-cal-btn">校准</button>
+      </div>
+      <div class="key-hints">
+        A/D 无限变道 · W/S 控速 · Shift 免费无限氮气 · Space 超维跃迁/泰山压顶 · 1 旋风 · 2 冲击波 · 3 追踪导弹 · 4 巨无霸 · C 视角(含360°看车) · G 车库 · F 全屏
+      </div>
+    </div>
+  </div>
+
+  <!-- 狂野击毁横幅 -->
+  <div id="takedown-banner">
+    <div id="td-title" class="td-title">TAKEDOWN!</div>
+    <div id="td-sub" class="td-sub">击毁 爆闪警车 · +500</div>
+  </div>
+
+  <!-- 移动端弧形触控与 6 大炫酷按钮 -->
+  <div id="touch-controls" class="hidden">
+    <!-- 左下：左右无限变道触控键 -->
+    <div class="touch-left-stack">
+      <div class="touch-row">
+        <button id="touch-left" class="touch-fab sk-steer" aria-label="向左变道"><span class="ico">◀</span><span class="lbl">左变道</span></button>
+        <button id="touch-right" class="touch-fab sk-steer" aria-label="向右变道"><span class="ico">▶</span><span class="lbl">右变道</span></button>
+      </div>
+    </div>
+
+    <!-- 右下：无限氮气锁定 + 4大狂野技能 + 跃迁压顶 + 超大无限氮气键 -->
+    <div class="touch-right-stack">
+      <button id="btn-nitro-lock" class="nitro-lock-pill">🔓 氮气锁定</button>
+      <div class="touch-row">
+        <button id="btn-sk-1" class="touch-fab sk-spin" aria-label="360度旋风撞击">
+          <div class="cd-mask"></div><span class="ico">🌀</span><span class="lbl">旋风</span>
+        </button>
+        <button id="btn-sk-2" class="touch-fab sk-emp" aria-label="EMP冲击波">
+          <div class="cd-mask"></div><span class="ico">💥</span><span class="lbl">冲击波</span>
+        </button>
+        <button id="btn-sk-3" class="touch-fab sk-miss" aria-label="追踪导弹齐射">
+          <div class="cd-mask"></div><span class="ico">🚀</span><span class="lbl">导弹×6</span>
+        </button>
+        <button id="btn-sk-4" class="touch-fab sk-titan" aria-label="战神巨无霸">
+          <div class="cd-mask"></div><span class="ico">🔥</span><span class="lbl">巨无霸</span>
+        </button>
+      </div>
+      <div class="touch-row">
+        <button id="btn-sk-5" class="touch-fab sk-jump" aria-label="跃迁与泰山压顶">
+          <div class="cd-mask"></div><span class="ico">⬆️</span><span id="jump-lbl" class="lbl">跃迁</span>
+        </button>
+        <button id="touch-nitro" class="touch-fab sk-nitro" aria-label="免费无限氮气">
+          <span class="ico">⚡</span><span class="lbl">无限氮气</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开场封面（实时 3D 展台背景） -->
+  <div id="start-overlay">
+    <div class="start-header">
+      <div class="hero-kicker">INFINITE-LANE SUPERHIGHWAY · 100% INVINCIBLE TAKEDOWNS</div>
+      <h1 class="hero-title">狂野无限 · APEX OVERDRIVE</h1>
+      <p class="hero-sub">
+        无护栏真正无限条车道 · 100%无敌随便撞飞 · 免费无限680KM/H氮气 · 5大狂野清屏技能 · 6款顶级超跑与对手车型 360° 自由鉴赏
+      </p>
+    </div>
+
+    <div class="glass start-footer">
+      <div class="quick-mode-strip" id="start-mode-strip">
+        <button class="btn-glass active" data-start-mode="all">🌐 全车型狂欢</button>
+        <button class="btn-glass" data-start-mode="supercars">🏎️ 超跑争霸</button>
+        <button class="btn-glass" data-start-mode="police">🚓 警车围剿</button>
+        <button class="btn-glass" data-start-mode="trucks">🚛 重卡保龄球</button>
+        <button class="btn-glass" data-start-mode="boss">👑 皇冠BOSS狩猎</button>
+      </div>
+      <div class="start-actions">
+        <button id="btn-start-play" class="btn-hero">🔥 立即狂飙</button>
+        <button id="btn-open-garage-start" class="btn-secondary-hero">🏎️ 360° 车库选车 / 赏车</button>
+        <button id="btn-fullscreen-start" class="btn-glass">⛶ 全屏体验</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 360° 互动看车展厅 / 车库 -->
+  <div id="garage-overlay">
+    <div class="garage-top">
+      <div class="glass garage-title-box">
+        <div id="garage-badge" class="mini-pill gold" style="display:inline-block;margin-bottom:5px;">免费解锁 · 360° 拖拽赏车 / 滚轮缩放</div>
+        <div id="garage-car-name" class="garage-car-name">APEX PHANTOM · 幻影极光</div>
+        <div id="garage-car-desc" class="garage-car-desc">未来极速流线超跑 · 双等离子推进尾喷 · 极致丝滑变道</div>
+        <div class="stat-bars">
+          <div class="stat-line"><span>极速爆发</span><div class="stat-track"><div id="stat-spd" class="stat-fill" style="width:94%"></div></div></div>
+          <div class="stat-line"><span>撞击碾压</span><div class="stat-track"><div id="stat-pwr" class="stat-fill" style="width:88%"></div></div></div>
+          <div class="stat-line"><span>操控灵敏</span><div class="stat-track"><div id="stat-hnd" class="stat-fill" style="width:95%"></div></div></div>
+        </div>
+      </div>
+
+      <div class="garage-top-actions">
+        <button id="btn-garage-fs" class="btn-glass">⛶ 全屏</button>
+        <button id="btn-garage-drive" class="btn-hero" style="padding:11px 26px;font-size:14px;">🚀 驾驶出击</button>
+      </div>
+    </div>
+
+    <div class="glass garage-bottom">
+      <div class="garage-tabs-row">
+        <div class="seg-group">
+          <button id="tab-my-cars" class="seg-btn active" style="padding:7px 14px;font-size:12px;">🏎️ 我的 6 款顶级超跑</button>
+          <button id="tab-rival-cars" class="seg-btn" style="padding:7px 14px;font-size:12px;">👀 鉴赏对手 / 警车 / 重卡车型</button>
+        </div>
+        <span style="font-size:11px;color:#94a3b8;">☝️ 任意拖拽 360° 环绕细看 · 双指/滚轮拉近特写</span>
+      </div>
+
+      <div id="garage-carousel" class="car-carousel"></div>
+
+      <div id="garage-customize-row" class="swatch-section">
+        <div class="swatch-group" id="paint-swatches">
+          <span class="swatch-lbl">🎨 车身烤漆:</span>
+        </div>
+        <div class="swatch-group" id="neon-swatches">
+          <span class="swatch-lbl">💡 底盘霓虹:</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-box">提示</div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 狂野无限 · APEX OVERDRIVE
+     * 3D 真·无限车道高速飙车 & 无敌撞击碾压引擎
+     * ============================================================================
+     */
+    (function () {
+      'use strict';
+
+      const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+
+      /* ------------------------------------------------------------------------
+         1. 车辆数据库：6 款免费解锁玩家顶级超跑 + 7 款可鉴赏对手/交通车型
+         ------------------------------------------------------------------------ */
+      const LANE_WIDTH = 4.8;
+
+      const PLAYER_CARS = [
+        {
+          id: 'phantom', name: 'APEX PHANTOM · 幻影极光', short: '幻影极光', tag: '未来极速超跑',
+          desc: '极致低趴碳纤维楔形超跑 · 双等离子推进尾喷 · 660 KM/H 狂飙',
+          baseColor: 0x0ea5e9, neonColor: 0x38bdf8, accentColor: 0xe0f2fe,
+          topSpeed: 660, power: 90, handling: 96, smashMult: 1.05, exhausts: 2, style: 'phantom'
+        },
+        {
+          id: 'valkyrie', name: 'VALKYRIE GT · 赤焰战神', short: '赤焰战神', tag: '宽体赛道猛兽',
+          desc: '宽体空气动力学 GT 猛兽 · 巨型鹅颈大尾翼 · 四出狂暴火焰',
+          baseColor: 0xef4444, neonColor: 0xf97316, accentColor: 0xfef08a,
+          topSpeed: 645, power: 95, handling: 92, smashMult: 1.15, exhausts: 4, style: 'valkyrie'
+        },
+        {
+          id: 'obsidian', name: 'OBSIDIAN W16 · 黑金帝王', short: '黑金帝王', tag: '黑金顶级超跑',
+          desc: '奢华曜石黑金 W16 旗舰 · 标志性侧弧进气与主动升降尾翼',
+          baseColor: 0x111827, neonColor: 0xfacc15, accentColor: 0xf59e0b,
+          topSpeed: 675, power: 94, handling: 90, smashMult: 1.15, exhausts: 4, style: 'obsidian'
+        },
+        {
+          id: 'behemoth', name: 'CYBER BEHEMOTH · 赛博装甲', short: '赛博装甲', tag: '重装碾压拦截车',
+          desc: '赛博重装防撞战车 · 巨型破障前杠与更广撞击范围，撞飞一切',
+          baseColor: 0x334155, neonColor: 0x22d3ee, accentColor: 0x38bdf8,
+          topSpeed: 625, power: 100, handling: 85, smashMult: 1.38, exhausts: 2, style: 'behemoth'
+        },
+        {
+          id: 'fzero', name: 'NEON F-ZERO · 星际方程式', short: '星际方程式', tag: '开放式未来F1',
+          desc: '开放式车轮太空方程式赛车 · 全场最高极速 690+ KM/H',
+          baseColor: 0x7c3aed, neonColor: 0xe879f9, accentColor: 0x67e8f9,
+          topSpeed: 695, power: 86, handling: 100, smashMult: 1.0, exhausts: 1, style: 'fzero'
+        },
+        {
+          id: 'dragon', name: 'SOLARIS DRAGON · 鎏金龙影', short: '鎏金龙影', tag: '翡翠鎏金奇幻超跑',
+          desc: '东方龙脊双鳍未来超跑 · 翡翠与鎏金交织的绝美氮气轨迹',
+          baseColor: 0x059669, neonColor: 0xfde047, accentColor: 0xfacc15,
+          topSpeed: 668, power: 93, handling: 94, smashMult: 1.12, exhausts: 3, style: 'dragon'
+        }
+      ];
+
+      const RIVAL_SHOWCASE = [
+        { id: 'rival_super', name: 'AI 顶级超跑对手 · 暴君·布加迪', short: 'AI超跑对手', tag: '高速飙车劲敌', desc: '配备大尾翼与专属拉花的高速 AI 飙车对手，撞飞获海量连击分', type: 'supercar', color: 0xf97316, neon: 0xfacc15, spd: 94, pwr: 84, hnd: 92 },
+        { id: 'rival_boss', name: '👑 皇冠宿敌 BOSS · 鎏金帝皇', short: '👑 皇冠BOSS', tag: '悬赏黄金宿敌', desc: '头顶旋转黄金皇冠的超高速宿敌，击毁爆出 3000 巨额积分与全屏焰火！', type: 'boss', color: 0xf59e0b, neon: 0xfde047, spd: 100, pwr: 96, hnd: 95 },
+        { id: 'rival_police', name: '拦截警车 · INTERCEPTOR 911', short: '爆闪警车', tag: '高速围剿警队', desc: '红蓝高频爆闪警灯拦截战车，疯狂包抄但依然是你眼前的纸糊玩具', type: 'police', color: 0x0f172a, neon: 0x3b82f6, spd: 86, pwr: 82, hnd: 88 },
+        { id: 'rival_truck', name: '18 轮重型集装箱大卡车', short: '重型大卡车', tag: '超级保龄球瓶', desc: '庞然大物般的高速货运巨兽，被你的战神座驾撞飞上天无比解压！', type: 'truck', color: 0xdc2626, neon: 0x000000, spd: 58, pwr: 98, hnd: 45 },
+        { id: 'rival_bus', name: '双层城市霓虹大巴', short: '双层大巴', tag: '巨型客运车', desc: '双层透明车窗城市巴士，一记冲击波或巨无霸即可掀翻空中连转！', type: 'bus', color: 0x2563eb, neon: 0x000000, spd: 52, pwr: 92, hnd: 48 },
+        { id: 'rival_muscle', name: '美式宽体肌肉车 · V8 MUSCLE', short: '美式肌肉车', tag: '街头经典改装', desc: '引擎盖带外露机械增压进气口，暴力拉花街头飙车党', type: 'muscle', color: 0x16a34a, neon: 0x4ade80, spd: 78, pwr: 80, hnd: 74 },
+        { id: 'rival_suv', name: '豪华城市装甲 SUV', short: '城市SUV', tag: '高速日常车流', desc: '高底盘宽体全尺寸 SUV，车流中随处可见的爽快撞击目标', type: 'suv', color: 0x64748b, neon: 0x000000, spd: 68, pwr: 76, hnd: 66 }
+      ];
+
+      const PAINT_PALETTE = [
+        { name: '幻影电光蓝', hex: 0x0ea5e9, css: '#0ea5e9' },
+        { name: '赤焰法拉利红', hex: 0xef4444, css: '#ef4444' },
+        { name: '曜石黑金', hex: 0x111827, css: '#1e293b' },
+        { name: '翡翠鎏金', hex: 0x059669, css: '#10b981' },
+        { name: '赛博霓虹紫', hex: 0x8b5cf6, css: '#8b5cf6' },
+        { name: '珍珠极光白', hex: 0xf8fafc, css: '#f8fafc' },
+        { name: '烈阳熔橙', hex: 0xf97316, css: '#f97316' },
+        { name: '星际薄荷青', hex: 0x06b6d4, css: '#06b6d4' }
+      ];
+
+      const NEON_PALETTE = [
+        { name: '极光蓝', hex: 0x38bdf8, css: '#38bdf8' },
+        { name: '烈焰红', hex: 0xf43f5e, css: '#f43f5e' },
+        { name: '鎏金色', hex: 0xfacc15, css: '#facc15' },
+        { name: '毒液绿', hex: 0x22c55e, css: '#22c55e' },
+        { name: '赛博紫', hex: 0xd946ef, css: '#d946ef' },
+        { name: '熔岩橙', hex: 0xf97316, css: '#f97316' },
+        { name: '纯白光', hex: 0xffffff, css: '#ffffff' },
+        { name: '关闭霓虹', hex: 0x000000, css: 'repeating-linear-gradient(45deg,#334155,#334155 4px,#0f172a 4px,#0f172a 8px)' }
+      ];
+
+      const RIVAL_NAMES = ['极光·兰博', '赤龙·法拉利', '暴君·布加迪', '夜影·迈凯伦', '银箭·帕加尼', '雷神·柯尼塞格', '星陨·保时捷'];
+
+      /* ------------------------------------------------------------------------
+         2. 五大天穹高速场景主题配置
+         ------------------------------------------------------------------------ */
+      const THEMES = [
+        {
+          name: '赛博霓虹夜城',
+          skyTop: new THREE.Color(0x020617),
+          skyMid: new THREE.Color(0x0f172a),
+          skyBot: new THREE.Color(0x3b0764),
+          fogColor: new THREE.Color(0x130b2e),
+          fogDensity: 0.0021,
+          sunColor: new THREE.Color(0x38bdf8),
+          sunDir: new THREE.Vector3(0.4, 0.32, -0.85).normalize(),
+          hemiSky: new THREE.Color(0x38bdf8),
+          hemiGround: new THREE.Color(0x1e1b4b),
+          roadBase: new THREE.Color(0x0b1120),
+          laneGlow: new THREE.Color(0x38bdf8),
+          gantryColor: new THREE.Color(0xd946ef),
+          wetness: 0.72, stars: 0.9, aurora: 0.25, rain: false
+        },
+        {
+          name: '黄金海岸落日',
+          skyTop: new THREE.Color(0x1e1b4b),
+          skyMid: new THREE.Color(0xc2410c),
+          skyBot: new THREE.Color(0xfde047),
+          fogColor: new THREE.Color(0xb45309),
+          fogDensity: 0.00175,
+          sunColor: new THREE.Color(0xffb74d),
+          sunDir: new THREE.Vector3(0.18, 0.16, -0.96).normalize(),
+          hemiSky: new THREE.Color(0xfed7aa),
+          hemiGround: new THREE.Color(0x451a03),
+          roadBase: new THREE.Color(0x1c1917),
+          laneGlow: new THREE.Color(0xfde047),
+          gantryColor: new THREE.Color(0xf97316),
+          wetness: 0.52, stars: 0.15, aurora: 0.0, rain: false
+        },
+        {
+          name: '极光冰川高速',
+          skyTop: new THREE.Color(0x020617),
+          skyMid: new THREE.Color(0x082f49),
+          skyBot: new THREE.Color(0x134e4a),
+          fogColor: new THREE.Color(0x082f49),
+          fogDensity: 0.00185,
+          sunColor: new THREE.Color(0x67e8f9),
+          sunDir: new THREE.Vector3(-0.45, 0.38, -0.80).normalize(),
+          hemiSky: new THREE.Color(0x34d399),
+          hemiGround: new THREE.Color(0x0f172a),
+          roadBase: new THREE.Color(0x0c192c),
+          laneGlow: new THREE.Color(0x34d399),
+          gantryColor: new THREE.Color(0x2dd4bf),
+          wetness: 0.85, stars: 1.0, aurora: 1.0, rain: false
+        },
+        {
+          name: '鎏金大漠奇迹',
+          skyTop: new THREE.Color(0x1c1917),
+          skyMid: new THREE.Color(0x92400e),
+          skyBot: new THREE.Color(0xfcd34d),
+          fogColor: new THREE.Color(0xa16207),
+          fogDensity: 0.0018,
+          sunColor: new THREE.Color(0xfef08a),
+          sunDir: new THREE.Vector3(0.65, 0.35, -0.68).normalize(),
+          hemiSky: new THREE.Color(0xfef08a),
+          hemiGround: new THREE.Color(0x422006),
+          roadBase: new THREE.Color(0x231b15),
+          laneGlow: new THREE.Color(0xfacc15),
+          gantryColor: new THREE.Color(0xf59e0b),
+          wetness: 0.35, stars: 0.1, aurora: 0.0, rain: false
+        },
+        {
+          name: '暴雨雷电暗夜',
+          skyTop: new THREE.Color(0x02040a),
+          skyMid: new THREE.Color(0x0f172a),
+          skyBot: new THREE.Color(0x1e293b),
+          fogColor: new THREE.Color(0x0b1324),
+          fogDensity: 0.00235,
+          sunColor: new THREE.Color(0x93c5fd),
+          sunDir: new THREE.Vector3(-0.3, 0.45, -0.84).normalize(),
+          hemiSky: new THREE.Color(0x60a5fa),
+          hemiGround: new THREE.Color(0x090d16),
+          roadBase: new THREE.Color(0x070b14),
+          laneGlow: new THREE.Color(0x60a5fa),
+          gantryColor: new THREE.Color(0x38bdf8),
+          wetness: 1.0, stars: 0.0, aurora: 0.0, rain: true
+        }
+      ];
+
+      const MODE_LABELS = {
+        all: '🌐 全车型狂欢',
+        supercars: '🏎️ 超跑军团争霸',
+        police: '🚓 警车疯狂围剿',
+        trucks: '🚛 重卡保龄球',
+        boss: '👑 皇冠宿敌狩猎'
+      };
+
+      /* ------------------------------------------------------------------------
+         3. 全程序化 Web Audio API 声学引擎 (V12 引擎 + 无限氮气涡轮 + 爆裂撞击 + 赛博电音)
+         ------------------------------------------------------------------------ */
+      class OverdriveAudio {
+        constructor() {
+          this.ctx = null;
+          this.initialized = false;
+          this.muted = false;
+          this.bgmOn = true;
+          this.master = null;
+          this.engOsc1 = null;
+          this.engOsc2 = null;
+          this.engFilter = null;
+          this.engGain = null;
+          this.nitroFilter = null;
+          this.nitroGain = null;
+          this.noiseBuf = null;
+          this.beatAccum = 0;
+          this.beatStep = 0;
+        }
+
+        init() {
+          if (this.initialized) {
+            if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+            return;
+          }
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            this.ctx = new AC();
+
+            const comp = this.ctx.createDynamicsCompressor();
+            comp.threshold.value = -12;
+            comp.ratio.value = 5;
+            comp.connect(this.ctx.destination);
+
+            this.master = this.ctx.createGain();
+            this.master.gain.value = this.muted ? 0 : 0.72;
+            this.master.connect(comp);
+
+            // 生成 2 秒白噪声缓存
+            const sr = this.ctx.sampleRate;
+            this.noiseBuf = this.ctx.createBuffer(1, sr * 2, sr);
+            const data = this.noiseBuf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+            // V12 双谐波超级跑车引擎
+            this.engOsc1 = this.ctx.createOscillator();
+            this.engOsc1.type = 'sawtooth';
+            this.engOsc1.frequency.value = 65;
+
+            this.engOsc2 = this.ctx.createOscillator();
+            this.engOsc2.type = 'triangle';
+            this.engOsc2.frequency.value = 130;
+
+            this.engFilter = this.ctx.createBiquadFilter();
+            this.engFilter.type = 'lowpass';
+            this.engFilter.frequency.value = 340;
+            this.engFilter.Q.value = 2.2;
+
+            this.engGain = this.ctx.createGain();
+            this.engGain.gain.value = 0;
+
+            this.engOsc1.connect(this.engFilter);
+            this.engOsc2.connect(this.engFilter);
+            this.engFilter.connect(this.engGain);
+            this.engGain.connect(this.master);
+            this.engOsc1.start();
+            this.engOsc2.start();
+
+            // 无限氮气喷气涡轮持续啸叫
+            const nSrc = this.ctx.createBufferSource();
+            nSrc.buffer = this.noiseBuf;
+            nSrc.loop = true;
+            this.nitroFilter = this.ctx.createBiquadFilter();
+            this.nitroFilter.type = 'bandpass';
+            this.nitroFilter.frequency.value = 950;
+            this.nitroFilter.Q.value = 1.4;
+            this.nitroGain = this.ctx.createGain();
+            this.nitroGain.gain.value = 0;
+            nSrc.connect(this.nitroFilter);
+            this.nitroFilter.connect(this.nitroGain);
+            this.nitroGain.connect(this.master);
+            nSrc.start();
+
+            this.initialized = true;
+          } catch (e) {
+            console.warn('Web Audio 受限:', e);
+          }
+        }
+
+        setMuted(m) {
+          this.muted = m;
+          if (this.master && this.ctx) {
+            this.master.gain.setTargetAtTime(m ? 0 : 0.72, this.ctx.currentTime, 0.05);
+          }
+        }
+
+        update(dt, playing, speedKmh, nitroOn) {
+          if (!this.initialized || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          if (!playing) {
+            this.engGain.gain.setTargetAtTime(0.025, now, 0.1);
+            this.engOsc1.frequency.setTargetAtTime(48, now, 0.1);
+            this.engOsc2.frequency.setTargetAtTime(96, now, 0.1);
+            this.nitroGain.gain.setTargetAtTime(0, now, 0.1);
+            return;
+          }
+
+          // 模拟 7 挡极速超跑动态换挡 RPM 曲线
+          const gearSpan = 92;
+          const gearIdx = Math.min(6, Math.floor(speedKmh / gearSpan));
+          const gearFrac = (speedKmh - gearIdx * gearSpan) / gearSpan;
+          const rpm = 0.35 + clamp(gearFrac, 0, 1.15) * 0.65 + (nitroOn ? 0.25 : 0);
+          const baseFreq = 54 + rpm * 125 + gearIdx * 9;
+
+          this.engOsc1.frequency.setTargetAtTime(baseFreq, now, 0.04);
+          this.engOsc2.frequency.setTargetAtTime(baseFreq * 1.98, now, 0.04);
+          this.engFilter.frequency.setTargetAtTime(280 + rpm * 950 + (nitroOn ? 650 : 0), now, 0.05);
+          this.engGain.gain.setTargetAtTime(0.14 + (nitroOn ? 0.05 : 0), now, 0.05);
+
+          this.nitroFilter.frequency.setTargetAtTime(nitroOn ? 1400 + speedKmh * 1.8 : 600, now, 0.06);
+          this.nitroGain.gain.setTargetAtTime(nitroOn ? 0.22 : 0.02, now, 0.06);
+
+          // 动感赛博电音 Synthwave 节拍伴奏 (132 BPM)
+          if (this.bgmOn) {
+            this.beatAccum += dt;
+            const stepDur = 60 / 132 / 2; // 8th note
+            if (this.beatAccum >= stepDur) {
+              this.beatAccum -= stepDur;
+              this.playSynthStep(this.beatStep++, nitroOn);
+            }
+          }
+        }
+
+        playSynthStep(step, nitroOn) {
+          const now = this.ctx.currentTime;
+          const s = step % 16;
+          // Kick drum on 0, 4, 8, 12
+          if (s % 4 === 0) {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(125, now);
+            o.frequency.exponentialRampToValueAtTime(38, now + 0.13);
+            g.gain.setValueAtTime(0.18, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            o.connect(g); g.connect(this.master);
+            o.start(now); o.stop(now + 0.16);
+          }
+          // Driving Cyberpunk Bassline (A minor)
+          const bassNotes = [55, 55, 110, 55, 65.41, 65.41, 130.8, 65.41, 49, 49, 98, 49, 73.42, 73.42, 110, 82.41];
+          const bOsc = this.ctx.createOscillator();
+          const bFilt = this.ctx.createBiquadFilter();
+          const bGain = this.ctx.createGain();
+          bOsc.type = 'sawtooth';
+          bOsc.frequency.setValueAtTime(bassNotes[s], now);
+          bFilt.type = 'lowpass';
+          bFilt.frequency.setValueAtTime(nitroOn ? 920 : 480, now);
+          bFilt.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+          bGain.gain.setValueAtTime(0.085, now);
+          bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          bOsc.connect(bFilt); bFilt.connect(bGain); bGain.connect(this.master);
+          bOsc.start(now); bOsc.stop(now + 0.21);
+        }
+
+        playTakedown(heavy = false) {
+          if (!this.initialized || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          // 震撼低音爆炸冲击
+          const sub = this.ctx.createOscillator();
+          const sg = this.ctx.createGain();
+          sub.type = 'sine';
+          sub.frequency.setValueAtTime(heavy ? 150 : 120, now);
+          sub.frequency.exponentialRampToValueAtTime(28, now + (heavy ? 0.45 : 0.32));
+          sg.gain.setValueAtTime(heavy ? 0.52 : 0.38, now);
+          sg.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+          sub.connect(sg); sg.connect(this.master);
+          sub.start(now); sub.stop(now + 0.5);
+
+          // 金属碎裂爆炸噪音
+          const src = this.ctx.createBufferSource();
+          src.buffer = this.noiseBuf;
+          const f = this.ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.setValueAtTime(1600, now);
+          f.frequency.exponentialRampToValueAtTime(260, now + 0.36);
+          const g = this.ctx.createGain();
+          g.gain.setValueAtTime(heavy ? 0.42 : 0.3, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+          src.connect(f); f.connect(g); g.connect(this.master);
+          src.start(now); src.stop(now + 0.4);
+        }
+
+        playSkill(kind) {
+          if (!this.initialized || !this.ctx || this.muted) return;
+          const now = this.ctx.currentTime;
+          if (kind === 'emp' || kind === 'slam') {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = 'sawtooth';
+            o.frequency.setValueAtTime(kind === 'emp' ? 240 : 160, now);
+            o.frequency.exponentialRampToValueAtTime(24, now + 0.65);
+            const f = this.ctx.createBiquadFilter();
+            f.type = 'lowpass'; f.frequency.value = 500;
+            g.gain.setValueAtTime(0.45, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+            o.connect(f); f.connect(g); g.connect(this.master);
+            o.start(now); o.stop(now + 0.72);
+          } else if (kind === 'missile') {
+            for (let i = 0; i < 4; i++) {
+              const st = now + i * 0.055;
+              const o = this.ctx.createOscillator();
+              const g = this.ctx.createGain();
+              o.type = 'triangle';
+              o.frequency.setValueAtTime(420, st);
+              o.frequency.exponentialRampToValueAtTime(1680, st + 0.16);
+              g.gain.setValueAtTime(0.16, st);
+              g.gain.exponentialRampToValueAtTime(0.001, st + 0.2);
+              o.connect(g); g.connect(this.master);
+              o.start(st); o.stop(st + 0.22);
+            }
+          } else {
+            // Spin / Titan / Jump power-up whoosh
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(190, now);
+            o.frequency.exponentialRampToValueAtTime(880, now + 0.28);
+            g.gain.setValueAtTime(0.26, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+            o.connect(g); g.connect(this.master);
+            o.start(now); o.stop(now + 0.36);
+          }
+        }
+      }
+
+      /* ------------------------------------------------------------------------
+         4. 全局游戏状态
+         ------------------------------------------------------------------------ */
+      const STATE = {
+        phase: 'start', // 'start' | 'garage' | 'playing'
+        cinemaMode: false,
+        themeIdx: 0,
+        rivalMode: 'all', // 'all' | 'supercars' | 'police' | 'trucks' | 'boss'
+        cameraMode: 0,    // 0: 追拍, 1: 贴地, 2: 车顶POV, 3: 360°环绕赏车
+        time: 0,
+
+        // 玩家选车与涂装自定义
+        selectedCarIdx: 0,
+        customPaint: PLAYER_CARS[0].baseColor,
+        customNeon: PLAYER_CARS[0].neonColor,
+        garageTab: 'player', // 'player' | 'rival'
+        garageRivalIdx: 0,
+
+        // 玩家世界物理状态（X 轴真正无限车道，Z 轴沿 -Z 无限狂飙）
+        wx: 0,
+        wy: 0,
+        wz: 0,
+        vx: 0,
+        vy: 0,
+        speed: 45, // m/s (1 m/s ≈ 4.1 km/h 狂野速度感)
+        steerAngle: 0,
+        grounded: true,
+        slamming: false,
+
+        // 免费无限氮气 & 5 大技能状态
+        nitroOn: false,
+        nitroLocked: false,
+        spinTimer: 0,
+        titanTimer: 0,
+        airFlipAngle: 0,
+        cooldowns: { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 },
+        maxCd: { s1: 1.8, s2: 2.8, s3: 2.5, s4: 3.0, s5: 1.5 },
+
+        // 战绩与爽感反馈
+        takedowns: 0,
+        score: 0,
+        combo: 0,
+        comboTimer: 0,
+        screenShake: 0,
+        flashAlpha: 0,
+        flashColor: '#f97316',
+        lightningAlpha: 0,
+
+        // 360° 展厅与行进赏车轨道参数
+        orbit: { dragging: false, lastX: 0, lastY: 0, yaw: 0.65, pitch: 0.24, dist: 9.2, targetDist: 9.2 },
+
+        // 陀螺仪
+        gyroEnabled: false,
+        gyroReceived: false,
+        gyroSens: 1.4,
+        gyroRaw: 0,
+        gyroOffset: 0,
+        gyroSmoothed: 0,
+
+        // 输入状态
+        keys: { left: false, right: false, up: false, down: false, nitro: false },
+        touch: { left: false, right: false, nitro: false, dragSteer: 0, dragActive: false, dragId: null, dragStartX: 0 }
+      };
+
+      const audio = new OverdriveAudio();
+
+      /* ------------------------------------------------------------------------
+         5. DOM 引用与 UI 工具
+         ------------------------------------------------------------------------ */
+      const dom = {
+        webgl: document.getElementById('webgl-canvas'),
+        fx: document.getElementById('fx-canvas'),
+        hud: document.getElementById('hud'),
+        speed: document.getElementById('hud-speed'),
+        rpmFill: document.getElementById('rpm-bar-fill'),
+        lane: document.getElementById('hud-lane'),
+        nitroPill: document.getElementById('hud-nitro-pill'),
+        takedowns: document.getElementById('hud-takedowns'),
+        score: document.getElementById('hud-score'),
+        modeBadge: document.getElementById('hud-mode-badge'),
+        dist: document.getElementById('hud-dist'),
+        btnFs: document.getElementById('btn-fullscreen'),
+        btnGarageHud: document.getElementById('btn-garage-hud'),
+        btnCamHud: document.getElementById('btn-cam-hud'),
+        btnCinema: document.getElementById('btn-cinema'),
+        btnAudio: document.getElementById('btn-audio'),
+        btnDrawer: document.getElementById('btn-drawer'),
+        drawer: document.getElementById('drawer-panel'),
+        btnGyroDrawer: document.getElementById('btn-gyro-drawer'),
+        btnCalDrawer: document.getElementById('btn-cal-drawer'),
+        btnCalHud: document.getElementById('btn-cal-hud'),
+        gyroSensRange: document.getElementById('gyro-sens-range'),
+        gyroSensLabel: document.getElementById('gyro-sens-label'),
+        gyroBarPill: document.getElementById('gyro-bar-pill'),
+        gyroDot: document.getElementById('gyro-dot'),
+        orbitHint: document.getElementById('orbit-hint'),
+        tdBanner: document.getElementById('takedown-banner'),
+        tdTitle: document.getElementById('td-title'),
+        tdSub: document.getElementById('td-sub'),
+        touchControls: document.getElementById('touch-controls'),
+        touchLeft: document.getElementById('touch-left'),
+        touchRight: document.getElementById('touch-right'),
+        touchNitro: document.getElementById('touch-nitro'),
+        btnNitroLock: document.getElementById('btn-nitro-lock'),
+        btnSk1: document.getElementById('btn-sk-1'),
+        btnSk2: document.getElementById('btn-sk-2'),
+        btnSk3: document.getElementById('btn-sk-3'),
+        btnSk4: document.getElementById('btn-sk-4'),
+        btnSk5: document.getElementById('btn-sk-5'),
+        jumpLbl: document.getElementById('jump-lbl'),
+        startOverlay: document.getElementById('start-overlay'),
+        btnStartPlay: document.getElementById('btn-start-play'),
+        btnOpenGarageStart: document.getElementById('btn-open-garage-start'),
+        btnFsStart: document.getElementById('btn-fullscreen-start'),
+        garageOverlay: document.getElementById('garage-overlay'),
+        garageBadge: document.getElementById('garage-badge'),
+        garageCarName: document.getElementById('garage-car-name'),
+        garageCarDesc: document.getElementById('garage-car-desc'),
+        statSpd: document.getElementById('stat-spd'),
+        statPwr: document.getElementById('stat-pwr'),
+        statHnd: document.getElementById('stat-hnd'),
+        btnGarageFs: document.getElementById('btn-garage-fs'),
+        btnGarageDrive: document.getElementById('btn-garage-drive'),
+        tabMyCars: document.getElementById('tab-my-cars'),
+        tabRivalCars: document.getElementById('tab-rival-cars'),
+        garageCarousel: document.getElementById('garage-carousel'),
+        garageCustomizeRow: document.getElementById('garage-customize-row'),
+        paintSwatches: document.getElementById('paint-swatches'),
+        neonSwatches: document.getElementById('neon-swatches'),
+        toastBox: document.getElementById('toast-box')
+      };
+
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      if (!isTouch) document.body.classList.add('desktop-device');
+
+      let toastTid = null;
+      function showToast(msg, ms = 2400) {
+        dom.toastBox.textContent = msg;
+        dom.toastBox.classList.add('show');
+        clearTimeout(toastTid);
+        toastTid = setTimeout(() => dom.toastBox.classList.remove('show'), ms);
+      }
+
+      let tdTid = null;
+      function showTakedownBanner(title, sub) {
+        dom.tdTitle.textContent = title;
+        dom.tdSub.textContent = sub;
+        dom.tdBanner.classList.remove('show');
+        void dom.tdBanner.offsetWidth;
+        dom.tdBanner.classList.add('show');
+        clearTimeout(tdTid);
+        tdTid = setTimeout(() => dom.tdBanner.classList.remove('show'), 1800);
+      }
+
+      /* ------------------------------------------------------------------------
+         6. Three.js 核心场景、无限车道 GLSL 路面、霓虹龙门架与 360° 豪华展台
+         ------------------------------------------------------------------------ */
+      let renderer, scene, camera, fxCtx;
+      let sunLight, hemiLight, garageSpot;
+      let skyDome, skyUniforms, starPoints, auroraMesh, skylineGroup, rainPoints;
+      let roadMesh, roadUniforms;
+      let gantryGroup, gantryPool = [];
+      let garageStageGroup, showcaseCarRoot;
+
+      // 玩家赛车容器 + 特效附件
+      let playerCarContainer, playerCarMesh, spinVortexRing, titanAuraMesh;
+      let ribbonMeshL, ribbonMeshR, ribbonGeoL, ribbonGeoR, ribbonHistL = [], ribbonHistR = [];
+      const MAX_RIBBON = 26;
+
+      // 交通车辆/对手对象、追踪导弹、爆炸火球/冲击波、全能粒子池
+      const trafficCars = [];
+      const missiles = [];
+      const fxSpheres = [];
+      let particlePoints, particlePool = [], particleCursor = 0;
+
+      const tmpV1 = new THREE.Vector3();
+      const tmpV2 = new THREE.Vector3();
+      const tmpCol = new THREE.Color();
+
+      function initScene() {
+        if (typeof THREE === 'undefined') {
+          showToast('Three.js 未能加载，请检查网络并刷新', 8000);
+          return false;
+        }
+        try {
+          renderer = new THREE.WebGLRenderer({
+            canvas: dom.webgl,
+            antialias: true,
+            powerPreference: 'high-performance'
+          });
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 1.18;
+
+          fxCtx = dom.fx.getContext('2d');
+          resizeFx();
+
+          scene = new THREE.Scene();
+          scene.fog = new THREE.FogExp2(THEMES[0].fogColor.getHex(), THEMES[0].fogDensity);
+
+          camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 2400);
+          scene.add(camera);
+
+          hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e1b4b, 0.92);
+          scene.add(hemiLight);
+
+          sunLight = new THREE.DirectionalLight(0x38bdf8, 1.65);
+          sunLight.position.set(28, 42, 26);
+          sunLight.castShadow = true;
+          sunLight.shadow.mapSize.width = 2048;
+          sunLight.shadow.mapSize.height = 2048;
+          sunLight.shadow.camera.near = 5;
+          sunLight.shadow.camera.far = 140;
+          sunLight.shadow.camera.left = -35;
+          sunLight.shadow.camera.right = 35;
+          sunLight.shadow.camera.top = 35;
+          sunLight.shadow.camera.bottom = -35;
+          scene.add(sunLight);
+
+          garageSpot = new THREE.SpotLight(0xffffff, 1.8, 60, Math.PI * 0.35, 0.6, 1);
+          garageSpot.position.set(6, 16, 8);
+          scene.add(garageSpot);
+
+          buildSkyAndSkyline();
+          buildInfiniteRoadShader();
+          buildInfiniteGantries();
+          buildGarageStage();
+          buildPlayerContainer();
+          buildParticlesAndRibbons();
+
+          applyTheme(0);
+          rebuildPlayerCar();
+          rebuildShowcaseCar();
+          populateInitialTraffic();
+          return true;
+        } catch (err) {
+          console.error('3D 引擎初始化异常:', err);
+          showToast('WebGL 初始化失败，请尝试刷新页面', 6000);
+          return false;
+        }
+      }
+
+      /**
+       * 天穹渐变 Shader + 繁星 + 流动极光 + 环绕霓虹城市天际线 + 暴雨雨丝
+       */
+      function buildSkyAndSkyline() {
+        skyUniforms = {
+          uTop: { value: THEMES[0].skyTop.clone() },
+          uMid: { value: THEMES[0].skyMid.clone() },
+          uBot: { value: THEMES[0].skyBot.clone() },
+          uSunDir: { value: THEMES[0].sunDir.clone() },
+          uSunCol: { value: THEMES[0].sunColor.clone() },
+          uFlash: { value: 0 }
+        };
+        skyDome = new THREE.Mesh(
+          new THREE.SphereGeometry(1800, 32, 18),
+          new THREE.ShaderMaterial({
+            uniforms: skyUniforms,
+            side: THREE.BackSide,
+            depthWrite: false,
+            fog: false,
+            vertexShader: `
+              varying vec3 vDir;
+              void main() {
+                vDir = normalize(position);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform vec3 uTop, uMid, uBot, uSunDir, uSunCol;
+              uniform float uFlash;
+              varying vec3 vDir;
+              void main() {
+                float y = clamp(vDir.y, -0.2, 1.0);
+                vec3 col = y > 0.08
+                  ? mix(uMid, uTop, smoothstep(0.08, 0.68, y))
+                  : mix(uBot, uMid, smoothstep(-0.08, 0.08, y));
+                float sd = max(dot(normalize(vDir), normalize(uSunDir)), 0.0);
+                col += uSunCol * pow(sd, 10.0) * 0.36;
+                col += uSunCol * pow(sd, 160.0) * 1.4;
+                col += vec3(0.75, 0.88, 1.0) * uFlash;
+                gl_FragColor = vec4(col, 1.0);
+              }
+            `
+          })
+        );
+        scene.add(skyDome);
+
+        // 星空
+        const sN = 520;
+        const sPos = new Float32Array(sN * 3);
+        for (let i = 0; i < sN; i++) {
+          const t = Math.random() * Math.PI * 2;
+          const p = Math.acos(0.06 + Math.random() * 0.94);
+          sPos[i * 3] = 1500 * Math.sin(p) * Math.cos(t);
+          sPos[i * 3 + 1] = 1500 * Math.cos(p);
+          sPos[i * 3 + 2] = 1500 * Math.sin(p) * Math.sin(t);
+        }
+        const sGeo = new THREE.BufferGeometry();
+        sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+        starPoints = new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 4.5, transparent: true, opacity: 0.85, fog: false, depthWrite: false }));
+        scene.add(starPoints);
+
+        // 极光幕布
+        auroraMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(1400, 260, 40, 4),
+          new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 }, uOpacity: { value: 0.25 } },
+            transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+            vertexShader: `
+              uniform float uTime;
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                vec3 p = position;
+                p.x += sin(uv.x * 11.0 + uTime * 0.8) * 45.0;
+                p.z += cos(uv.x * 7.0 - uTime * 0.5) * 35.0;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform float uTime; uniform float uOpacity;
+              varying vec2 vUv;
+              void main() {
+                float c = 0.5 + 0.5 * sin(vUv.x * 20.0 + uTime * 1.1);
+                float v = smoothstep(0.0, 0.22, vUv.y) * (1.0 - smoothstep(0.35, 1.0, vUv.y));
+                float h = smoothstep(0.0, 0.14, vUv.x) * (1.0 - smoothstep(0.86, 1.0, vUv.x));
+                vec3 col = mix(vec3(0.08, 0.96, 0.72), vec3(0.65, 0.30, 0.98), smoothstep(0.2, 0.85, vUv.y));
+                gl_FragColor = vec4(col, v * h * (0.4 + 0.6 * c) * uOpacity);
+              }
+            `
+          })
+        );
+        auroraMesh.position.set(0, 220, -820);
+        scene.add(auroraMesh);
+
+        // 360° 远景赛博都市/群峰天际线剪影（始终位于无穷远处）
+        skylineGroup = new THREE.Group();
+        const bldgMat = new THREE.MeshBasicMaterial({ color: 0x090f24, fog: true });
+        const winMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending });
+        const count = 48;
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2;
+          const dist = 620 + (i % 3) * 140;
+          const h = 75 + ((i * 53) % 190);
+          const w = 28 + ((i * 31) % 34);
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bldgMat);
+          m.position.set(Math.sin(ang) * dist, h * 0.5 - 6, Math.cos(ang) * dist);
+          skylineGroup.add(m);
+          if (i % 2 === 0) {
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 2.2, w + 1), winMat);
+            stripe.position.set(m.position.x, h * 0.85, m.position.z);
+            skylineGroup.add(stripe);
+          }
+        }
+        skylineGroup.userData.winMat = winMat;
+        scene.add(skylineGroup);
+
+        // 暴雨场景专属 3D 疾风骤雨粒子
+        const rN = 650;
+        const rPos = new Float32Array(rN * 3);
+        for (let i = 0; i < rN; i++) {
+          rPos[i * 3] = (Math.random() - 0.5) * 110;
+          rPos[i * 3 + 1] = Math.random() * 48;
+          rPos[i * 3 + 2] = (Math.random() - 0.5) * 120 - 20;
+        }
+        const rGeo = new THREE.BufferGeometry();
+        rGeo.setAttribute('position', new THREE.BufferAttribute(rPos, 3));
+        rainPoints = new THREE.Points(
+          rGeo,
+          new THREE.PointsMaterial({ color: 0xbae6fd, size: 0.36, transparent: true, opacity: 0.55, depthWrite: false })
+        );
+        rainPoints.visible = false;
+        scene.add(rainPoints);
+      }
+
+      /**
+       * 【核心黑科技】真·无限车道超级高速 GLSL ShaderMaterial
+       * 根据真实 worldX / worldZ 无缝渲染无限条宽 4.8m 车道、湿滑沥青反光、发光虚线与霓虹倒影！
+       */
+      function buildInfiniteRoadShader() {
+        roadUniforms = {
+          uWorldPos: { value: new THREE.Vector2(0, 0) },
+          uTime: { value: 0 },
+          uLaneWidth: { value: LANE_WIDTH },
+          uRoadBase: { value: THEMES[0].roadBase.clone() },
+          uLaneGlow: { value: THEMES[0].laneGlow.clone() },
+          uGantryCol: { value: THEMES[0].gantryColor.clone() },
+          uFogColor: { value: THEMES[0].fogColor.clone() },
+          uFogDensity: { value: THEMES[0].fogDensity },
+          uWetness: { value: THEMES[0].wetness },
+          uPlayerNeon: { value: new THREE.Color(STATE.customNeon) },
+          uFlash: { value: 0 }
+        };
+
+        const geo = new THREE.PlaneGeometry(1600, 1600, 1, 1);
+        geo.rotateX(-Math.PI / 2);
+
+        const mat = new THREE.ShaderMaterial({
+          uniforms: roadUniforms,
+          vertexShader: `
+            varying vec2 vLocalXZ;
+            void main() {
+              vLocalXZ = position.xz;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec2 uWorldPos;
+            uniform float uTime;
+            uniform float uLaneWidth;
+            uniform vec3 uRoadBase;
+            uniform vec3 uLaneGlow;
+            uniform vec3 uGantryCol;
+            uniform vec3 uFogColor;
+            uniform float uFogDensity;
+            uniform float uWetness;
+            uniform vec3 uPlayerNeon;
+            uniform float uFlash;
+            varying vec2 vLocalXZ;
+
+            float hash(vec2 p) {
+              return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            void main() {
+              vec2 wp = vLocalXZ + uWorldPos;
+              float dist = length(vLocalXZ);
+
+              // 1) 细腻沥青颗粒 + 湿滑路面反光纹理
+              float grain = hash(floor(wp * 4.5)) * 0.06;
+              vec3 col = uRoadBase + vec3(grain);
+
+              // 2) 每 4.8 米一条无限车道线（无左右护栏，从 -∞ 到 +∞ 永远延展）
+              float laneMod = abs(mod(wp.x + uLaneWidth * 0.5, uLaneWidth) - uLaneWidth * 0.5);
+              float laneIdx = floor((wp.x + uLaneWidth * 0.5) / uLaneWidth);
+              float isMajor = step(abs(mod(laneIdx, 6.0)), 0.1); // 每 6 条车道一条高亮主干引导双实线
+
+              float dashZ = step(0.42, fract(-wp.y * 0.055));
+              float lineMask = (1.0 - smoothstep(0.06, 0.14, laneMod)) * mix(dashZ, 1.0, isMajor);
+
+              // 车道中心隐约轮胎压痕反光带
+              float centerTrack = smoothstep(1.9, 0.3, abs(laneMod - uLaneWidth * 0.5));
+              col += uLaneGlow * centerTrack * 0.035 * uWetness;
+
+              // 发光车道标线
+              vec3 lineColor = mix(vec3(0.88, 0.96, 1.0), uLaneGlow, 0.55 + isMajor * 0.4);
+              col = mix(col, lineColor * 1.45, lineMask * 0.82);
+
+              // 3) 横向霓虹龙门架能量光带倒影（每 96 米一排）
+              float stripZ = abs(mod(wp.y + 48.0, 96.0) - 48.0);
+              float gantryReflect = exp(-stripZ * 0.22) * (0.28 + 0.55 * uWetness);
+              col += uGantryCol * gantryReflect * 0.42;
+
+              // 4) 玩家座驾底盘实时霓虹投影光晕
+              float playerGlow = exp(-dot(vLocalXZ, vLocalXZ) * 0.085);
+              col += uPlayerNeon * playerGlow * (0.42 + 0.4 * uWetness);
+
+              // 5) 暴雨闪电路面反光
+              col += vec3(0.45, 0.65, 1.0) * uFlash * uWetness * 0.5;
+
+              // 6) 丝滑指数雾融入远方天际线
+              float fogFactor = 1.0 - exp(-pow(dist * uFogDensity, 2.0));
+              col = mix(col, uFogColor, clamp(fogFactor, 0.0, 1.0));
+
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `
+        });
+
+        roadMesh = new THREE.Mesh(geo, mat);
+        roadMesh.receiveShadow = true;
+        scene.add(roadMesh);
+      }
+
+      /**
+       * 基于玩家当前所在 (X, Z) 无限网格单元无缝循环的霓虹高速龙门架与悬浮路标
+       */
+      function buildInfiniteGantries() {
+        gantryGroup = new THREE.Group();
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.7 });
+        const neonMat = new THREE.MeshBasicMaterial({ color: 0xd946ef });
+        const signMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending });
+        gantryGroup.userData = { neonMat, signMat };
+
+        // 5x5 网格阵列围绕玩家（跨度 X 方向每 38.4m=8车道，Z 方向每 96m），彻底无限覆盖！
+        for (let gx = -2; gx <= 2; gx++) {
+          for (let gz = -4; gz <= 1; gz++) {
+            const g = new THREE.Group();
+            // 细长流线霓虹光柱（无碰撞，纯视觉纵深感）
+            const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.65, 18, 0.65), pillarMat);
+            pillar.position.y = 9;
+            const strip = new THREE.Mesh(new THREE.BoxGeometry(0.75, 16, 0.2), neonMat);
+            strip.position.set(0, 9, 0.35);
+            // 顶部横跨高空光梁
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(38.4, 0.55, 0.6), pillarMat);
+            beam.position.set(19.2, 17.8, 0);
+            const beamGlow = new THREE.Mesh(new THREE.BoxGeometry(38.4, 0.25, 0.7), signMat);
+            beamGlow.position.set(19.2, 17.3, 0);
+            // 悬浮指示牌
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(8.5, 2.2, 0.25), signMat);
+            sign.position.set(19.2, 15.2, 0.2);
+
+            g.add(pillar, strip, beam, beamGlow, sign);
+            g.userData = { gx, gz };
+            gantryGroup.add(g);
+            gantryPool.push(g);
+          }
+        }
+        scene.add(gantryGroup);
+      }
+
+      function updateInfiniteGantries() {
+        const cellX = LANE_WIDTH * 8; // 38.4m
+        const cellZ = 96;
+        const baseGX = Math.floor(STATE.wx / cellX);
+        const baseGZ = Math.floor(STATE.wz / cellZ);
+
+        for (let i = 0; i < gantryPool.length; i++) {
+          const g = gantryPool[i];
+          const wx = (baseGX + g.userData.gx) * cellX + LANE_WIDTH * 0.5;
+          const wz = (baseGZ + g.userData.gz) * cellZ;
+          g.position.set(wx - STATE.wx, 0, wz - STATE.wz);
+        }
+      }
+
+      /**
+       * 360° 豪华旋转看车展台（开场与车库模式展示）
+       */
+      function buildGarageStage() {
+        garageStageGroup = new THREE.Group();
+        const base = new THREE.Mesh(
+          new THREE.CylinderGeometry(5.6, 6.2, 0.36, 48),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.85 })
+        );
+        base.position.y = 0.18;
+        base.receiveShadow = true;
+        garageStageGroup.add(base);
+
+        const ringOuter = new THREE.Mesh(
+          new THREE.TorusGeometry(5.75, 0.09, 12, 64),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        ringOuter.rotation.x = Math.PI / 2;
+        ringOuter.position.y = 0.38;
+        garageStageGroup.add(ringOuter);
+
+        const ringInner = new THREE.Mesh(
+          new THREE.TorusGeometry(4.4, 0.04, 10, 48),
+          new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.8 })
+        );
+        ringInner.rotation.x = Math.PI / 2;
+        ringInner.position.y = 0.39;
+        garageStageGroup.add(ringInner);
+
+        showcaseCarRoot = new THREE.Group();
+        showcaseCarRoot.position.y = 0.36;
+        garageStageGroup.add(showcaseCarRoot);
+
+        scene.add(garageStageGroup);
+      }
+
+      /* ------------------------------------------------------------------------
+         7. 精细多部件 3D 程序化汽车建模工厂 (支持 6 款玩家超跑 + 7 款对手/交通车型)
+         ------------------------------------------------------------------------ */
+      const wheelGeoStd = new THREE.CylinderGeometry(0.42, 0.42, 0.34, 16);
+      wheelGeoStd.rotateZ(Math.PI / 2);
+      const rimGeoStd = new THREE.CylinderGeometry(0.25, 0.25, 0.36, 10);
+      rimGeoStd.rotateZ(Math.PI / 2);
+      const wheelMatTire = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.82, metalness: 0.15 });
+      const glassMatDark = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.08, metalness: 0.92 });
+      const headLightMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+      const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+
+      function addWheelsToCar(group, wheelCoords, scale = 1.0, rimHex = 0x38bdf8) {
+        const rimMat = new THREE.MeshStandardMaterial({ color: rimHex, emissive: rimHex, emissiveIntensity: 0.35, roughness: 0.25, metalness: 0.85 });
+        const wheels = [];
+        for (let i = 0; i < wheelCoords.length; i++) {
+          const [x, y, z] = wheelCoords[i];
+          const w = new THREE.Group();
+          const tire = new THREE.Mesh(wheelGeoStd, wheelMatTire);
+          const rim = new THREE.Mesh(rimGeoStd, rimMat);
+          w.add(tire, rim);
+          w.scale.setScalar(scale);
+          w.position.set(x, y, z);
+          group.add(w);
+          wheels.push(w);
+        }
+        return wheels;
+      }
+
+      /**
+       * 构建玩家 6 款顶级超跑（前端朝向 -Z，精细流线与尾翼/尾焰/底盘霓虹）
+       */
+      function buildPlayerSupercar(carCfg, paintHex, neonHex) {
+        const root = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: paintHex, roughness: 0.22, metalness: 0.72 });
+        const carbonMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.42, metalness: 0.55 });
+        const accentMat = new THREE.MeshStandardMaterial({ color: carCfg.accentColor, emissive: carCfg.accentColor, emissiveIntensity: 0.35, roughness: 0.25, metalness: 0.7 });
+
+        const style = carCfg.style;
+        const isFZero = style === 'fzero';
+        const isBehemoth = style === 'behemoth';
+
+        // 1) 低趴流线主车身与底盘分流器
+        const bodyW = isFZero ? 1.15 : (isBehemoth ? 2.42 : 2.16);
+        const bodyH = isFZero ? 0.42 : (isBehemoth ? 0.72 : 0.48);
+        const bodyL = isFZero ? 5.1 : (isBehemoth ? 5.0 : 4.75);
+
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(bodyW, bodyH, bodyL), bodyMat);
+        chassis.position.set(0, 0.54, 0);
+        chassis.castShadow = true;
+        root.add(chassis);
+
+        // 车头俯冲鼻锥 + 前唇分流器
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 0.92, bodyH * 0.65, 1.35), bodyMat);
+        nose.position.set(0, 0.46, -bodyL * 0.42);
+        nose.rotation.x = 0.16;
+        nose.castShadow = true;
+        root.add(nose);
+
+        const splitter = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.18, 0.08, 0.65), carbonMat);
+        splitter.position.set(0, 0.24, -bodyL * 0.52);
+        root.add(splitter);
+
+        // 2) 反光流线座舱玻璃
+        const cabinW = isFZero ? 0.78 : bodyW * 0.76;
+        const cabinH = isBehemoth ? 0.56 : 0.44;
+        const cabinL = isFZero ? 1.9 : 2.15;
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(cabinW, cabinH, cabinL), glassMatDark);
+        cabin.position.set(0, 0.92, 0.12);
+        cabin.castShadow = true;
+        root.add(cabin);
+
+        // 侧裙与空气动力学进气导风槽
+        if (!isFZero) {
+          [-1, 1].forEach((side) => {
+            const fender = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.52, 1.55), bodyMat);
+            fender.position.set(side * (bodyW * 0.5 + 0.06), 0.56, 1.15);
+            root.add(fender);
+
+            const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 2.8), carbonMat);
+            skirt.position.set(side * (bodyW * 0.5 + 0.08), 0.28, 0);
+            root.add(skirt);
+          });
+        } else {
+          // F-Zero 星际方程式专属宽大前定风翼与侧箱
+          const fWing = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.08, 0.58), accentMat);
+          fWing.position.set(0, 0.26, -2.58);
+          root.add(fWing);
+          [-1, 1].forEach((s) => {
+            const pod = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.36, 2.1), bodyMat);
+            pod.position.set(s * 0.76, 0.46, 0.2);
+            root.add(pod);
+          });
+        }
+
+        // 车型专属标志造型部件
+        if (isBehemoth) {
+          // 重装破障前防撞钢梁 + 车顶激光灯条
+          const bullbar = new THREE.Mesh(new THREE.BoxGeometry(2.58, 0.45, 0.36), carbonMat);
+          bullbar.position.set(0, 0.52, -2.65);
+          root.add(bullbar);
+          const roofBar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.22), accentMat);
+          roofBar.position.set(0, 1.26, -0.15);
+          root.add(roofBar);
+        } else if (style === 'dragon') {
+          // 鎏金龙影双脊背翼鳍
+          [-0.42, 0.42].forEach((x) => {
+            const fin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.46, 1.85), accentMat);
+            fin.position.set(x, 1.08, 1.15);
+            fin.rotation.x = -0.14;
+            root.add(fin);
+          });
+        } else if (style === 'obsidian') {
+          // 黑金帝王经典侧弧亮条
+          [-1, 1].forEach((s) => {
+            const arc = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.045, 8, 20, Math.PI), accentMat);
+            arc.rotation.y = Math.PI / 2;
+            arc.rotation.z = Math.PI / 2;
+            arc.position.set(s * (bodyW * 0.52), 0.72, 0.25);
+            root.add(arc);
+          });
+        }
+
+        // 3) 霸气大尾翼（赛博/GT风格）
+        const wingY = style === 'valkyrie' ? 1.38 : (isBehemoth ? 1.24 : 1.16);
+        const wingW = style === 'valkyrie' ? 2.48 : (isFZero ? 2.2 : 2.18);
+        const wingBlade = new THREE.Mesh(new THREE.BoxGeometry(wingW, 0.08, 0.44), style === 'valkyrie' || style === 'dragon' ? accentMat : carbonMat);
+        wingBlade.position.set(0, wingY, bodyL * 0.44);
+        wingBlade.rotation.x = 0.12;
+        root.add(wingBlade);
+        [-0.62, 0.62].forEach((sx) => {
+          const strut = new THREE.Mesh(new THREE.BoxGeometry(0.08, wingY - 0.72, 0.24), carbonMat);
+          strut.position.set(sx, (wingY + 0.72) * 0.5, bodyL * 0.44);
+          root.add(strut);
+        });
+
+        // 4) 贯穿式未来 LED 头灯 & 尾灯
+        const headBar = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 0.88, 0.11, 0.12), headLightMat);
+        headBar.position.set(0, 0.56, -bodyL * 0.51);
+        root.add(headBar);
+
+        const tailBar = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 0.92, 0.13, 0.12), tailLightMat);
+        tailBar.position.set(0, 0.64, bodyL * 0.51);
+        root.add(tailBar);
+
+        // 5) 旋转轮毂 + 发光卡钳
+        const wx = isFZero ? 1.05 : (bodyW * 0.5 + 0.08);
+        const wzF = -bodyL * 0.33;
+        const wzR = bodyL * 0.34;
+        const wheels = addWheelsToCar(root, [[-wx, 0.42, wzF], [wx, 0.42, wzF], [-wx, 0.44, wzR], [wx, 0.44, wzR]], isBehemoth ? 1.18 : 1.02, neonHex || carCfg.accentColor);
+
+        // 6) 多出等离子氮气尾焰喷口
+        const flames = [];
+        const flameGeo = new THREE.ConeGeometry(0.18, 2.6, 10);
+        flameGeo.rotateX(Math.PI / 2);
+        const flameMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        const exOffsets = carCfg.exhausts === 4 ? [-0.55, -0.22, 0.22, 0.55] :
+                          carCfg.exhausts === 3 ? [-0.36, 0, 0.36] :
+                          carCfg.exhausts === 1 ? [0] : [-0.36, 0.36];
+        exOffsets.forEach((ex) => {
+          const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.32, 10), carbonMat);
+          tip.rotation.x = Math.PI / 2;
+          tip.position.set(ex, 0.36, bodyL * 0.52);
+          root.add(tip);
+
+          const fl = new THREE.Mesh(flameGeo, flameMat);
+          fl.position.set(ex, 0.36, bodyL * 0.52 + 1.3);
+          fl.visible = false;
+          root.add(fl);
+          flames.push(fl);
+        });
+
+        // 7) 底盘霓虹投影灯板
+        const underglow = new THREE.Mesh(
+          new THREE.PlaneGeometry(bodyW + 1.35, bodyL + 1.1),
+          new THREE.MeshBasicMaterial({
+            color: neonHex, transparent: true, opacity: neonHex === 0 ? 0 : 0.48, blending: THREE.AdditiveBlending, depthWrite: false
+          })
+        );
+        underglow.rotation.x = -Math.PI / 2;
+        underglow.position.y = 0.05;
+        root.add(underglow);
+
+        root.userData = { wheels, flames, underglow, flameMat };
+        return root;
+      }
+
+      /**
+       * 构建道路上的 7 种交通/对手车型（同样可调上 360° 展台细看！）
+       */
+      function buildTrafficVehicle(type, colorHex) {
+        const root = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.34, metalness: 0.55 });
+        const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.4 });
+        const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, metalness: 0.25 });
+
+        let halfW = 1.05, halfL = 2.25;
+        let lightbarR = null, lightbarB = null, crown = null, wheels = [];
+
+        if (type === 'truck') {
+          // 18 轮重型集装箱大卡车
+          halfW = 1.48; halfL = 6.2;
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(2.65, 2.85, 3.1), bodyMat);
+          cab.position.set(0, 1.85, -4.4);
+          cab.castShadow = true;
+          root.add(cab);
+
+          const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.45, 1.0, 0.16), glassMatDark);
+          windshield.position.set(0, 2.35, -5.92);
+          root.add(windshield);
+
+          const container = new THREE.Mesh(
+            new THREE.BoxGeometry(2.85, 3.35, 8.8),
+            new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.55, metalness: 0.2 })
+          );
+          container.position.set(0, 2.3, 1.8);
+          container.castShadow = true;
+          root.add(container);
+
+          // 集装箱侧面醒目条纹
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.92, 0.55, 8.6), bodyMat);
+          stripe.position.set(0, 2.3, 1.8);
+          root.add(stripe);
+
+          const hl = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.25, 0.14), headLightMat);
+          hl.position.set(0, 0.95, -5.98);
+          root.add(hl);
+          const tl = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.25, 0.14), tailLightMat);
+          tl.position.set(0, 0.85, 6.22);
+          root.add(tl);
+
+          wheels = addWheelsToCar(root, [
+            [-1.38, 0.54, -4.6], [1.38, 0.54, -4.6],
+            [-1.38, 0.54, -2.5], [1.38, 0.54, -2.5],
+            [-1.38, 0.54, 3.2], [1.38, 0.54, 3.2],
+            [-1.38, 0.54, 4.9], [1.38, 0.54, 4.9]
+          ], 1.28, 0x94a3b8);
+        } else if (type === 'bus') {
+          // 双层霓虹城市大巴
+          halfW = 1.42; halfL = 5.4;
+          const body = new THREE.Mesh(new THREE.BoxGeometry(2.75, 3.65, 10.6), bodyMat);
+          body.position.set(0, 2.25, 0);
+          body.castShadow = true;
+          root.add(body);
+
+          // 上下两层透明反光车窗带
+          [1.65, 3.15].forEach((wy) => {
+            const win = new THREE.Mesh(new THREE.BoxGeometry(2.82, 0.78, 9.6), glassMatDark);
+            win.position.set(0, wy, -0.1);
+            root.add(win);
+          });
+          const hl = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.24, 0.15), headLightMat);
+          hl.position.set(0, 0.85, -5.32);
+          root.add(hl);
+          const tl = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.26, 0.15), tailLightMat);
+          tl.position.set(0, 0.9, 5.32);
+          root.add(tl);
+
+          wheels = addWheelsToCar(root, [
+            [-1.34, 0.52, -3.4], [1.34, 0.52, -3.4],
+            [-1.34, 0.52, 3.1], [1.34, 0.52, 3.1]
+          ], 1.22, 0xcbd5e1);
+        } else if (type === 'police') {
+          // 红蓝爆闪警车拦截战车
+          halfW = 1.08; halfL = 2.4;
+          const body = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.62, 4.7), darkMat);
+          body.position.y = 0.62; body.castShadow = true;
+          root.add(body);
+          const doorWhite = new THREE.Mesh(new THREE.BoxGeometry(2.12, 0.56, 2.05), whiteMat);
+          doorWhite.position.set(0, 0.62, 0.05);
+          root.add(doorWhite);
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.54, 2.15), glassMatDark);
+          cab.position.set(0, 1.15, 0.15);
+          root.add(cab);
+
+          // 顶部红蓝高频爆闪灯条
+          lightbarR = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.18, 0.28), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          lightbarR.position.set(-0.34, 1.5, 0.1);
+          lightbarB = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.18, 0.28), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+          lightbarB.position.set(0.34, 1.5, 0.1);
+          root.add(lightbarR, lightbarB);
+
+          const hl = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.15, 0.12), headLightMat);
+          hl.position.set(0, 0.64, -2.36);
+          const tl = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.15, 0.12), tailLightMat);
+          tl.position.set(0, 0.68, 2.36);
+          root.add(hl, tl);
+
+          wheels = addWheelsToCar(root, [[-1.06, 0.42, -1.45], [1.06, 0.42, -1.45], [-1.06, 0.42, 1.45], [1.06, 0.42, 1.45]], 1.0, 0x94a3b8);
+        } else if (type === 'supercar' || type === 'boss') {
+          // AI 超跑对手 / 鎏金皇冠 BOSS 超跑
+          halfW = 1.15; halfL = 2.48;
+          const isBoss = type === 'boss';
+          const mat = isBoss
+            ? new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 0.45, roughness: 0.15, metalness: 0.9 })
+            : new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.2, metalness: 0.75 });
+
+          const body = new THREE.Mesh(new THREE.BoxGeometry(2.18, 0.48, 4.8), mat);
+          body.position.y = 0.52; body.castShadow = true;
+          root.add(body);
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.42, 2.1), glassMatDark);
+          cab.position.set(0, 0.88, 0.12);
+          root.add(cab);
+          const wing = new THREE.Mesh(new THREE.BoxGeometry(2.28, 0.08, 0.4), isBoss ? new THREE.MeshBasicMaterial({ color: 0xfde047 }) : darkMat);
+          wing.position.set(0, 1.18, 2.15);
+          root.add(wing);
+
+          const hl = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.12, 0.12), headLightMat);
+          hl.position.set(0, 0.54, -2.42);
+          const tl = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.13, 0.12), tailLightMat);
+          tl.position.set(0, 0.6, 2.42);
+          root.add(hl, tl);
+
+          // 底部霓虹灯
+          const ug = new THREE.Mesh(
+            new THREE.PlaneGeometry(3.2, 5.5),
+            new THREE.MeshBasicMaterial({ color: isBoss ? 0xfacc15 : colorHex, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false })
+          );
+          ug.rotation.x = -Math.PI / 2; ug.position.y = 0.05;
+          root.add(ug);
+
+          // 皇冠 BOSS 专属悬浮旋转 3D 黄金皇冠！
+          if (isBoss) {
+            crown = new THREE.Group();
+            const cMat = new THREE.MeshBasicMaterial({ color: 0xfde047 });
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.12, 8, 20), cMat);
+            ring.rotation.x = Math.PI / 2;
+            crown.add(ring);
+            for (let k = 0; k < 5; k++) {
+              const ang = (k / 5) * Math.PI * 2;
+              const spike = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.65, 5), cMat);
+              spike.position.set(Math.cos(ang) * 0.72, 0.35, Math.sin(ang) * 0.72);
+              crown.add(spike);
+            }
+            crown.position.y = 2.45;
+            root.add(crown);
+          }
+
+          wheels = addWheelsToCar(root, [[-1.1, 0.42, -1.55], [1.1, 0.42, -1.55], [-1.1, 0.42, 1.55], [1.1, 0.42, 1.55]], 1.02, isBoss ? 0xfde047 : 0x38bdf8);
+        } else {
+          // 城市轿车 / 美式肌肉车 / SUV
+          const isSuv = type === 'suv';
+          const isMuscle = type === 'muscle';
+          halfW = isSuv ? 1.12 : 1.02;
+          halfL = isSuv ? 2.45 : 2.25;
+
+          const body = new THREE.Mesh(new THREE.BoxGeometry(halfW * 2, isSuv ? 0.85 : 0.62, halfL * 2), bodyMat);
+          body.position.y = isSuv ? 0.78 : 0.62; body.castShadow = true;
+          root.add(body);
+
+          const cab = new THREE.Mesh(new THREE.BoxGeometry(halfW * 1.65, isSuv ? 0.72 : 0.52, isSuv ? 2.9 : 2.1), glassMatDark);
+          cab.position.set(0, isSuv ? 1.48 : 1.12, isSuv ? 0.25 : 0.12);
+          root.add(cab);
+
+          if (isMuscle) {
+            // 机械增压外露引擎盖进气口
+            const blower = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.32, 0.82), darkMat);
+            blower.position.set(0, 1.02, -1.1);
+            root.add(blower);
+          }
+
+          const hl = new THREE.Mesh(new THREE.BoxGeometry(halfW * 1.7, 0.16, 0.12), headLightMat);
+          hl.position.set(0, 0.66, -halfL - 0.02);
+          const tl = new THREE.Mesh(new THREE.BoxGeometry(halfW * 1.75, 0.16, 0.12), tailLightMat);
+          tl.position.set(0, 0.7, halfL + 0.02);
+          root.add(hl, tl);
+
+          wheels = addWheelsToCar(root, [
+            [-halfW, 0.42, -halfL * 0.62], [halfW, 0.42, -halfL * 0.62],
+            [-halfW, 0.42, halfL * 0.62], [halfW, 0.42, halfL * 0.62]
+          ], isSuv ? 1.12 : 0.96, 0x94a3b8);
+        }
+
+        root.userData = { halfW, halfL, lightbarR, lightbarB, crown, wheels };
+        return root;
+      }
+
+      /* ------------------------------------------------------------------------
+         8. 玩家载具容器、技能视觉光环、流光拖尾与粒子系统
+         ------------------------------------------------------------------------ */
+      function buildPlayerContainer() {
+        playerCarContainer = new THREE.Group();
+        scene.add(playerCarContainer);
+
+        // 技能1「360°旋风撞击」等离子旋风环
+        spinVortexRing = new THREE.Mesh(
+          new THREE.RingGeometry(2.4, 5.2, 36),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        spinVortexRing.rotation.x = -Math.PI / 2;
+        spinVortexRing.position.y = 0.6;
+        spinVortexRing.visible = false;
+        playerCarContainer.add(spinVortexRing);
+
+        // 技能4「战神巨无霸」熔金烈焰守护穹顶
+        titanAuraMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(3.4, 24, 16),
+          new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.24, wireframe: true, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        titanAuraMesh.position.y = 0.9;
+        titanAuraMesh.visible = false;
+        playerCarContainer.add(titanAuraMesh);
+      }
+
+      function rebuildPlayerCar() {
+        if (playerCarMesh) playerCarContainer.remove(playerCarMesh);
+        const cfg = PLAYER_CARS[STATE.selectedCarIdx];
+        playerCarMesh = buildPlayerSupercar(cfg, STATE.customPaint, STATE.customNeon);
+        playerCarContainer.add(playerCarMesh);
+        if (roadUniforms) {
+          roadUniforms.uPlayerNeon.value.setHex(STATE.customNeon === 0 ? 0x0ea5e9 : STATE.customNeon);
+        }
+      }
+
+      function rebuildShowcaseCar() {
+        while (showcaseCarRoot.children.length > 0) {
+          showcaseCarRoot.remove(showcaseCarRoot.children[0]);
+        }
+        if (STATE.garageTab === 'player') {
+          const cfg = PLAYER_CARS[STATE.selectedCarIdx];
+          const m = buildPlayerSupercar(cfg, STATE.customPaint, STATE.customNeon);
+          showcaseCarRoot.add(m);
+          dom.garageBadge.textContent = `免费解锁 · ${cfg.tag} · 360° 拖拽赏车`;
+          dom.garageCarName.textContent = cfg.name;
+          dom.garageCarDesc.textContent = cfg.desc;
+          dom.statSpd.style.width = `${clamp((cfg.topSpeed - 500) / 2.1, 60, 100)}%`;
+          dom.statPwr.style.width = `${cfg.power}%`;
+          dom.statHnd.style.width = `${cfg.handling}%`;
+          dom.garageCustomizeRow.style.display = 'flex';
+        } else {
+          const r = RIVAL_SHOWCASE[STATE.garageRivalIdx];
+          const m = buildTrafficVehicle(r.type, r.color);
+          // 巨型卡车与大巴适当微缩以完整优雅地放进展台视野
+          if (r.type === 'truck' || r.type === 'bus') m.scale.setScalar(0.76);
+          showcaseCarRoot.add(m);
+          dom.garageBadge.textContent = `对手/交通车型鉴赏 · ${r.tag}`;
+          dom.garageCarName.textContent = r.name;
+          dom.garageCarDesc.textContent = r.desc;
+          dom.statSpd.style.width = `${r.spd}%`;
+          dom.statPwr.style.width = `${r.pwr}%`;
+          dom.statHnd.style.width = `${r.hnd}%`;
+          dom.garageCustomizeRow.style.display = 'none';
+        }
+      }
+
+      function buildParticlesAndRibbons() {
+        // 全能 3D 爆炸火花/火焰/金属碎片对象池 (680 粒子零 GC)
+        const n = 680;
+        const pos = new Float32Array(n * 3);
+        const col = new Float32Array(n * 3);
+        particlePool = [];
+        for (let i = 0; i < n; i++) {
+          pos[i * 3 + 1] = -9999;
+          particlePool.push({ wx: 0, wy: -9999, wz: 0, vx: 0, vy: 0, vz: 0, life: 0, gravity: 24 });
+        }
+        const pGeo = new THREE.BufferGeometry();
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        particlePoints = new THREE.Points(
+          pGeo,
+          new THREE.PointsMaterial({ size: 1.15, vertexColors: true, transparent: true, opacity: 0.94, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        particlePoints.frustumCulled = false;
+        scene.add(particlePoints);
+
+        // 氮气车尾双流光霓虹丝带
+        const makeRibbon = () => {
+          const g = new THREE.BufferGeometry();
+          g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_RIBBON * 2 * 3), 3));
+          const m = new THREE.Mesh(
+            g,
+            new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.72, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+          );
+          m.frustumCulled = false;
+          scene.add(m);
+          return { g, m };
+        };
+        const rL = makeRibbon(); ribbonGeoL = rL.g; ribbonMeshL = rL.m;
+        const rR = makeRibbon(); ribbonGeoR = rR.g; ribbonMeshR = rR.m;
+      }
+
+      function emitExplosion(wx, wy, wz, count, palette, spdMin, spdMax) {
+        const colAttr = particlePoints.geometry.attributes.color;
+        for (let i = 0; i < count; i++) {
+          const p = particlePool[particleCursor];
+          const idx = particleCursor;
+          particleCursor = (particleCursor + 1) % particlePool.length;
+          const th = Math.random() * Math.PI * 2;
+          const ph = Math.acos(2 * Math.random() - 1);
+          const spd = rand(spdMin, spdMax);
+          p.wx = wx; p.wy = wy; p.wz = wz;
+          p.vx = Math.sin(ph) * Math.cos(th) * spd;
+          p.vy = Math.abs(Math.cos(ph)) * spd * 1.15 + 5;
+          p.vz = Math.sin(ph) * Math.sin(th) * spd;
+          p.life = rand(0.42, 1.15);
+          p.gravity = 24;
+          tmpCol.setHex(palette[i % palette.length]);
+          colAttr.setXYZ(idx, tmpCol.r, tmpCol.g, tmpCol.b);
+        }
+        colAttr.needsUpdate = true;
+      }
+
+      function spawnFxSphere(wx, wy, wz, colorHex, maxScale, dur, wireframe = false) {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 20, 14),
+          new THREE.MeshBasicMaterial({
+            color: colorHex, transparent: true, opacity: 0.85, wireframe, blending: THREE.AdditiveBlending, depthWrite: false
+          })
+        );
+        mesh.userData = { wx, wy, wz, maxScale, dur, age: 0 };
+        scene.add(mesh);
+        fxSpheres.push(mesh);
+      }
+
+      /* ------------------------------------------------------------------------
+         9. 无限车道动态车辆与对手生态管理器
+         ------------------------------------------------------------------------ */
+      const TRAFFIC_COLORS = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0xe2e8f0, 0x06b6d4, 0xf97316];
+      const MAX_TRAFFIC = 34;
+
+      function pickVehicleTypeForMode() {
+        const m = STATE.rivalMode;
+        if (m === 'supercars') return Math.random() < 0.88 ? 'supercar' : 'muscle';
+        if (m === 'police') return Math.random() < 0.85 ? 'police' : 'suv';
+        if (m === 'trucks') return Math.random() < 0.65 ? 'truck' : 'bus';
+        if (m === 'boss') {
+          const hasActiveBoss = trafficCars.some((c) => c.type === 'boss' && !c.wrecked);
+          if (!hasActiveBoss) return 'boss';
+          return Math.random() < 0.55 ? 'supercar' : 'police';
+        }
+        // all: 全车型狂欢
+        const r = Math.random();
+        if (r < 0.24) return 'supercar';
+        if (r < 0.40) return 'police';
+        if (r < 0.54) return 'truck';
+        if (r < 0.64) return 'bus';
+        if (r < 0.78) return 'muscle';
+        if (r < 0.90) return 'suv';
+        return 'sedan';
+      }
+
+      function spawnTrafficCar(zOffsetMin = 120, zOffsetMax = 420) {
+        const type = pickVehicleTypeForMode();
+        const color = TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)];
+        const mesh = buildTrafficVehicle(type, color);
+        scene.add(mesh);
+
+        // 在玩家当前车道左右 ±9 条无限车道内随机生成（保证横移总有车撞！）
+        const curLane = Math.round(STATE.wx / LANE_WIDTH);
+        const laneOff = type === 'boss' ? Math.round(rand(-3, 3)) : Math.round(rand(-9, 9));
+        const laneIdx = curLane + laneOff;
+        const wx = laneIdx * LANE_WIDTH;
+        const wz = STATE.wz - rand(zOffsetMin, zOffsetMax);
+
+        let speed = 26;
+        let label = '社会车辆';
+        let scoreVal = 300;
+        if (type === 'supercar') {
+          speed = rand(55, 76);
+          label = RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)];
+          scoreVal = 800;
+        } else if (type === 'boss') {
+          speed = 86;
+          label = '👑 皇冠宿敌 BOSS';
+          scoreVal = 3000;
+        } else if (type === 'police') {
+          speed = rand(46, 62);
+          label = '🚓 爆闪拦截警车';
+          scoreVal = 650;
+        } else if (type === 'truck') {
+          speed = rand(22, 30);
+          label = '🚛 18轮重型巨卡';
+          scoreVal = 750;
+        } else if (type === 'bus') {
+          speed = rand(20, 28);
+          label = '🚌 双层城市大巴';
+          scoreVal = 700;
+        } else if (type === 'muscle') {
+          speed = rand(38, 50);
+          label = '美式V8肌肉车';
+          scoreVal = 450;
+        } else if (type === 'suv') {
+          speed = rand(30, 40);
+          label = '豪华城市SUV';
+          scoreVal = 380;
+        }
+
+        trafficCars.push({
+          type, label, scoreVal, mesh,
+          wx, wy: 0, wz,
+          vx: 0, vy: 0, vz: -speed,
+          baseSpeed: speed,
+          halfW: mesh.userData.halfW,
+          halfL: mesh.userData.halfL,
+          wrecked: false,
+          wreckAge: 0,
+          rotVx: 0, rotVy: 0, rotVz: 0
+        });
+      }
+
+      function populateInitialTraffic() {
+        clearTraffic();
+        for (let i = 0; i < MAX_TRAFFIC; i++) {
+          spawnTrafficCar(45, 420);
+        }
+      }
+
+      function clearTraffic() {
+        for (let i = 0; i < trafficCars.length; i++) scene.remove(trafficCars[i].mesh);
+        trafficCars.length = 0;
+      }
+
+      /**
+       * 触发《狂野飙车》式爽爆击毁 (TAKEDOWN)：3D 剧烈翻滚抛飞 + 火焰大爆炸 + 震屏连击
+       */
+      function triggerTakedown(car, impulseX, impulseY, impulseZ, reasonTag = '') {
+        if (car.wrecked) return;
+        car.wrecked = true;
+        car.wreckAge = 0;
+
+        // 剧烈 3D 抛飞速度与三轴狂暴翻滚
+        const dirX = impulseX !== 0 ? impulseX : (Math.random() > 0.5 ? 1 : -1) * rand(18, 34);
+        car.vx = dirX;
+        car.vy = impulseY || rand(22, 36);
+        car.vz = impulseZ || (-STATE.speed - rand(28, 52));
+        car.rotVx = rand(-11, 11);
+        car.rotVy = rand(-9, 9);
+        car.rotVz = rand(-12, 12);
+
+        const isHeavy = car.type === 'truck' || car.type === 'bus' || car.type === 'boss';
+        audio.playTakedown(isHeavy);
+
+        // 大片火焰、火花、金属碎片与冲击波爆炸球
+        const palette = car.type === 'boss'
+          ? [0xfde047, 0xf97316, 0xffffff, 0xef4444, 0x38bdf8]
+          : [0xf97316, 0xfacc15, 0xef4444, 0xffffff];
+        emitExplosion(car.wx, car.wy + 1.5, car.wz, isHeavy ? 65 : 38, palette, 12, isHeavy ? 44 : 32);
+        spawnFxSphere(car.wx, car.wy + 1.4, car.wz, car.type === 'boss' ? 0xfacc15 : 0xf97316, isHeavy ? 14 : 8.5, 0.42);
+
+        STATE.takedowns++;
+        STATE.combo++;
+        STATE.comboTimer = 4.6;
+        const pts = Math.round(car.scoreVal * (1 + Math.min(STATE.combo, 25) * 0.15));
+        STATE.score += pts;
+        STATE.screenShake = Math.max(STATE.screenShake, isHeavy ? 0.75 : 0.42);
+        STATE.flashAlpha = Math.max(STATE.flashAlpha, isHeavy ? 0.36 : 0.2);
+        STATE.flashColor = car.type === 'boss' ? '#facc15' : '#f97316';
+
+        // 炫酷连击横幅分级
+        let headline = 'TAKEDOWN!';
+        if (car.type === 'boss') headline = '👑 BOSS 击毁!!';
+        else if (STATE.combo >= 15) headline = `GODLIKE ×${STATE.combo}!!`;
+        else if (STATE.combo >= 10) headline = `RAMPAGE ×${STATE.combo}!`;
+        else if (STATE.combo >= 6) headline = `UNSTOPPABLE ×${STATE.combo}!`;
+        else if (STATE.combo === 3) headline = 'TRIPLE SMASH!';
+        else if (STATE.combo === 2) headline = 'DOUBLE WRECK!';
+        if (reasonTag) headline = `${reasonTag} ${headline}`;
+
+        showTakedownBanner(headline, `粉碎 ${car.label} · +${pts}`);
+      }
+
+      /* ------------------------------------------------------------------------
+         10. 5 大超爽狂野主动技能 (短 CD、完全免费、一键清屏)
+         ------------------------------------------------------------------------ */
+      function triggerSkill1Spin() {
+        if (STATE.phase !== 'playing' || STATE.cooldowns.s1 > 0) return;
+        audio.init();
+        STATE.cooldowns.s1 = STATE.maxCd.s1;
+        STATE.spinTimer = 0.62;
+        spinVortexRing.visible = true;
+        audio.playSkill('spin');
+        STATE.screenShake = Math.max(STATE.screenShake, 0.35);
+        spawnFxSphere(STATE.wx, STATE.wy + 0.8, STATE.wz, 0x38bdf8, 13, 0.42, true);
+        showTakedownBanner('🌀 360° 旋风撞击!', '横扫周围 13 米全部对手');
+      }
+
+      function triggerSkill2EMP() {
+        if (STATE.phase !== 'playing' || STATE.cooldowns.s2 > 0) return;
+        audio.init();
+        STATE.cooldowns.s2 = STATE.maxCd.s2;
+        audio.playSkill('emp');
+        STATE.screenShake = 0.88;
+        STATE.flashAlpha = 0.45;
+        STATE.flashColor = '#a855f7';
+
+        // 巨型 55 米霓虹球形 EMP 冲击波
+        spawnFxSphere(STATE.wx, STATE.wy + 1.0, STATE.wz, 0xa855f7, 56, 0.62, true);
+        spawnFxSphere(STATE.wx, STATE.wy + 1.0, STATE.wz, 0x38bdf8, 42, 0.48, false);
+
+        let hits = 0;
+        for (let i = 0; i < trafficCars.length; i++) {
+          const c = trafficCars[i];
+          if (c.wrecked) continue;
+          const dx = c.wx - STATE.wx;
+          const dz = c.wz - STATE.wz;
+          const d = Math.hypot(dx, dz);
+          if (d < 58) {
+            const nx = d > 0.1 ? dx / d : (Math.random() - 0.5);
+            triggerTakedown(c, nx * 36, rand(28, 46), -STATE.speed - 42, '💥 EMP');
+            hits++;
+          }
+        }
+        if (hits === 0) showTakedownBanner('💥 EMP 震荡波!', '55 米电磁风暴席卷高速');
+      }
+
+      function triggerSkill3Missiles() {
+        if (STATE.phase !== 'playing' || STATE.cooldowns.s3 > 0) return;
+        audio.init();
+        STATE.cooldowns.s3 = STATE.maxCd.s3;
+        audio.playSkill('missile');
+
+        // 锁定前方最近的 6 辆未损毁车辆
+        const candidates = trafficCars
+          .filter((c) => !c.wrecked && c.wz < STATE.wz + 12 && c.wz > STATE.wz - 340)
+          .sort((a, b) => Math.hypot(a.wx - STATE.wx, a.wz - STATE.wz) - Math.hypot(b.wx - STATE.wx, b.wz - STATE.wz));
+
+        const mGeo = new THREE.CylinderGeometry(0.16, 0.22, 1.85, 8);
+        mGeo.rotateX(Math.PI / 2);
+        const mMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+        const flameMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, blending: THREE.AdditiveBlending });
+
+        for (let i = 0; i < 6; i++) {
+          const g = new THREE.Group();
+          g.add(new THREE.Mesh(mGeo, mMat));
+          const tail = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.2, 8), flameMat);
+          tail.rotation.x = Math.PI / 2; tail.position.z = 1.4;
+          g.add(tail);
+          scene.add(g);
+
+          const target = candidates[i] || candidates[i % Math.max(1, candidates.length)] || null;
+          const spreadX = (i - 2.5) * 4.5;
+          missiles.push({
+            mesh: g,
+            wx: STATE.wx + (i - 2.5) * 0.4,
+            wy: STATE.wy + 1.8,
+            wz: STATE.wz - 0.8,
+            vx: spreadX * 2.8,
+            vy: 14 + (i % 2) * 5,
+            vz: -STATE.speed - 35,
+            target,
+            age: 0
+          });
+        }
+        showTakedownBanner('🚀 追踪导弹 ×6 齐射!', '全自动锁定前方车阵');
+      }
+
+      function triggerSkill4Titan() {
+        if (STATE.phase !== 'playing' || STATE.cooldowns.s4 > 0) return;
+        audio.init();
+        STATE.cooldowns.s4 = STATE.maxCd.s4;
+        STATE.titanTimer = 8.0;
+        titanAuraMesh.visible = true;
+        audio.playSkill('titan');
+        STATE.screenShake = 0.55;
+        STATE.flashAlpha = 0.32;
+        STATE.flashColor = '#facc15';
+        spawnFxSphere(STATE.wx, STATE.wy + 1.2, STATE.wz, 0xfacc15, 16, 0.45, true);
+        showTakedownBanner('🔥 战神巨无霸变身!', '2.2 倍巨兽形态 · 8 秒保龄球碾压');
+      }
+
+      function triggerSkill5JumpOrSlam() {
+        if (STATE.phase !== 'playing') return;
+        audio.init();
+        if (STATE.grounded) {
+          if (STATE.cooldowns.s5 > 0) return;
+          STATE.cooldowns.s5 = STATE.maxCd.s5;
+          STATE.grounded = false;
+          STATE.slamming = false;
+          STATE.vy = 26.5;
+          STATE.airFlipAngle = 0;
+          audio.playSkill('jump');
+          emitExplosion(STATE.wx, 0.3, STATE.wz, 24, [0x2dd4bf, 0x38bdf8, 0xffffff], 6, 18);
+          dom.jumpLbl.textContent = '压顶!';
+        } else if (!STATE.slamming) {
+          // 空中二次触发：泰山压顶流星俯冲！
+          STATE.slamming = true;
+          STATE.vy = -58;
+          audio.playSkill('jump');
+          showTakedownBanner('☄️ 泰山压顶!!', '流星砸地清场');
+        }
+      }
+
+      /* ------------------------------------------------------------------------
+         11. 主题切换、全屏切换与车库开关
+         ------------------------------------------------------------------------ */
+      function applyTheme(idx) {
+        STATE.themeIdx = idx;
+        const th = THEMES[idx];
+        skyUniforms.uTop.value.copy(th.skyTop);
+        skyUniforms.uMid.value.copy(th.skyMid);
+        skyUniforms.uBot.value.copy(th.skyBot);
+        skyUniforms.uSunDir.value.copy(th.sunDir);
+        skyUniforms.uSunCol.value.copy(th.sunColor);
+
+        scene.fog.color.copy(th.fogColor);
+        scene.fog.density = th.fogDensity;
+
+        sunLight.color.copy(th.sunColor);
+        hemiLight.color.copy(th.hemiSky);
+        hemiLight.groundColor.copy(th.hemiGround);
+
+        roadUniforms.uRoadBase.value.copy(th.roadBase);
+        roadUniforms.uLaneGlow.value.copy(th.laneGlow);
+        roadUniforms.uGantryCol.value.copy(th.gantryColor);
+        roadUniforms.uFogColor.value.copy(th.fogColor);
+        roadUniforms.uFogDensity.value = th.fogDensity;
+        roadUniforms.uWetness.value = th.wetness;
+
+        gantryGroup.userData.neonMat.color.copy(th.gantryColor);
+        gantryGroup.userData.signMat.color.copy(th.laneGlow);
+        skylineGroup.userData.winMat.color.copy(th.laneGlow);
+
+        starPoints.material.opacity = th.stars;
+        auroraMesh.material.uniforms.uOpacity.value = th.aurora;
+        rainPoints.visible = th.rain;
+
+        document.querySelectorAll('[data-theme]').forEach((b) => {
+          b.classList.toggle('active', parseInt(b.dataset.theme, 10) === idx);
+        });
+      }
+
+      function setRivalMode(mode) {
+        STATE.rivalMode = mode;
+        dom.modeBadge.textContent = MODE_LABELS[mode];
+        document.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+        document.querySelectorAll('[data-start-mode]').forEach((b) => b.classList.toggle('active', b.dataset.startMode === mode));
+        populateInitialTraffic();
+        showToast(`已切换对手模式：${MODE_LABELS[mode]}`);
+      }
+
+      function toggleFullscreen() {
+        const doc = document;
+        const el = document.documentElement;
+        try {
+          if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+            if (req) {
+              const p = req.call(el);
+              if (p && p.catch) p.catch(() => showToast('当前浏览器限制自动全屏，可横屏畅玩'));
+            } else {
+              showToast('当前移动端浏览器不支持网页全屏 API，建议横屏游玩');
+            }
+          } else {
+            const ex = doc.exitFullscreen || doc.webkitExitFullscreen;
+            if (ex) ex.call(doc);
+          }
+        } catch (e) {
+          showToast('全屏切换受限，已为您保持全视口适配');
+        }
+      }
+
+      function openGarage() {
+        STATE.phase = 'garage';
+        dom.startOverlay.classList.add('hidden');
+        dom.hud.classList.add('hidden');
+        dom.touchControls.classList.add('hidden');
+        dom.garageOverlay.classList.add('open');
+        garageStageGroup.visible = true;
+        playerCarContainer.visible = false;
+        ribbonMeshL.visible = false;
+        ribbonMeshR.visible = false;
+        STATE.orbit.yaw = 0.65;
+        STATE.orbit.pitch = 0.25;
+        STATE.orbit.targetDist = 9.0;
+        renderGarageCarousel();
+        rebuildShowcaseCar();
+      }
+
+      function startDriving() {
+        audio.init();
+        STATE.phase = 'playing';
+        dom.startOverlay.classList.add('hidden');
+        dom.garageOverlay.classList.remove('open');
+        dom.hud.classList.remove('hidden');
+        dom.touchControls.classList.remove('hidden');
+        garageStageGroup.visible = false;
+        playerCarContainer.visible = true;
+        ribbonMeshL.visible = true;
+        ribbonMeshR.visible = true;
+        rebuildPlayerCar();
+        showTakedownBanner('🔥 狂野无限启航!', '无限车道 · 免费氮气 · 随便撞飞');
+      }
+
+      function renderGarageCarousel() {
+        dom.garageCarousel.innerHTML = '';
+        if (STATE.garageTab === 'player') {
+          PLAYER_CARS.forEach((c, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'car-chip' + (idx === STATE.selectedCarIdx ? ' active' : '');
+            btn.innerHTML = `${c.short}<small>${c.tag}</small>`;
+            btn.addEventListener('click', () => {
+              STATE.selectedCarIdx = idx;
+              STATE.customPaint = c.baseColor;
+              STATE.customNeon = c.neonColor;
+              renderGarageCarousel();
+              syncSwatchHighlights();
+              rebuildShowcaseCar();
+              rebuildPlayerCar();
+            });
+            dom.garageCarousel.appendChild(btn);
+          });
+        } else {
+          RIVAL_SHOWCASE.forEach((r, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'car-chip' + (idx === STATE.garageRivalIdx ? ' active' : '');
+            btn.innerHTML = `${r.short}<small>${r.tag}</small>`;
+            btn.addEventListener('click', () => {
+              STATE.garageRivalIdx = idx;
+              renderGarageCarousel();
+              rebuildShowcaseCar();
+            });
+            dom.garageCarousel.appendChild(btn);
+          });
+        }
+      }
+
+      function initSwatches() {
+        PAINT_PALETTE.forEach((p) => {
+          const d = document.createElement('button');
+          d.className = 'swatch-dot';
+          d.title = p.name;
+          d.style.background = p.css;
+          d.dataset.hex = p.hex;
+          d.addEventListener('click', () => {
+            STATE.customPaint = p.hex;
+            syncSwatchHighlights();
+            rebuildShowcaseCar();
+            rebuildPlayerCar();
+          });
+          dom.paintSwatches.appendChild(d);
+        });
+        NEON_PALETTE.forEach((n) => {
+          const d = document.createElement('button');
+          d.className = 'swatch-dot';
+          d.title = n.name;
+          d.style.background = n.css;
+          d.dataset.hex = n.hex;
+          d.addEventListener('click', () => {
+            STATE.customNeon = n.hex;
+            syncSwatchHighlights();
+            rebuildShowcaseCar();
+            rebuildPlayerCar();
+          });
+          dom.neonSwatches.appendChild(d);
+        });
+        syncSwatchHighlights();
+      }
+
+      function syncSwatchHighlights() {
+        dom.paintSwatches.querySelectorAll('.swatch-dot').forEach((d) => {
+          d.classList.toggle('active', parseInt(d.dataset.hex, 10) === STATE.customPaint);
+        });
+        dom.neonSwatches.querySelectorAll('.swatch-dot').forEach((d) => {
+          d.classList.toggle('active', parseInt(d.dataset.hex, 10) === STATE.customNeon);
+        });
+      }
+
+      /* ------------------------------------------------------------------------
+         12. 核心游戏物理与动画循环 (60 FPS 零泄漏)
+         ------------------------------------------------------------------------ */
+      function stepSimulation(dt) {
+        STATE.time += dt;
+        auroraMesh.material.uniforms.uTime.value = STATE.time;
+        roadUniforms.uTime.value = STATE.time;
+
+        if (STATE.screenShake > 0) STATE.screenShake = Math.max(0, STATE.screenShake - dt * 2.3);
+        if (STATE.flashAlpha > 0) STATE.flashAlpha = Math.max(0, STATE.flashAlpha - dt * 2.2);
+
+        // 暴雨雷电随机闪电效果
+        const th = THEMES[STATE.themeIdx];
+        if (th.rain) {
+          if (Math.random() < dt * 0.45) STATE.lightningAlpha = 0.85;
+          STATE.lightningAlpha = Math.max(0, STATE.lightningAlpha - dt * 3.8);
+          skyUniforms.uFlash.value = STATE.lightningAlpha;
+          roadUniforms.uFlash.value = STATE.lightningAlpha;
+
+          const rArr = rainPoints.geometry.attributes.position.array;
+          for (let i = 0; i < rArr.length / 3; i++) {
+            rArr[i * 3 + 1] -= 52 * dt;
+            rArr[i * 3 + 2] += STATE.speed * 0.85 * dt;
+            if (rArr[i * 3 + 1] < 0) rArr[i * 3 + 1] = 46;
+            if (rArr[i * 3 + 2] > 40) rArr[i * 3 + 2] -= 120;
+          }
+          rainPoints.geometry.attributes.position.needsUpdate = true;
+        } else {
+          skyUniforms.uFlash.value = 0;
+          roadUniforms.uFlash.value = 0;
+        }
+
+        // --- 模式 A：开场封面 / 360° 豪华展厅 ---
+        if (STATE.phase !== 'playing') {
+          garageStageGroup.visible = true;
+          playerCarContainer.visible = false;
+          // 开场展台缓慢优雅自转，车库中未拖拽时缓慢微转
+          if (!STATE.orbit.dragging) {
+            STATE.orbit.yaw += dt * (STATE.phase === 'start' ? 0.36 : 0.16);
+          }
+          STATE.orbit.dist = lerp(STATE.orbit.dist, STATE.orbit.targetDist, clamp(dt * 8, 0, 1));
+          const r = STATE.orbit.dist;
+          camera.position.set(
+            Math.sin(STATE.orbit.yaw) * Math.cos(STATE.orbit.pitch) * r,
+            1.4 + Math.sin(STATE.orbit.pitch) * r,
+            Math.cos(STATE.orbit.yaw) * Math.cos(STATE.orbit.pitch) * r
+          );
+          camera.fov = lerp(camera.fov, 54, clamp(dt * 6, 0, 1));
+          camera.updateProjectionMatrix();
+          camera.lookAt(0, 1.15, 0);
+
+          // 展台背光与警灯/皇冠动画
+          if (showcaseCarRoot.children[0]) {
+            const ud = showcaseCarRoot.children[0].userData;
+            if (ud && ud.crown) ud.crown.rotation.y += dt * 2.5;
+            if (ud && ud.lightbarR) {
+              const blink = Math.floor(STATE.time * 12) % 2 === 0;
+              ud.lightbarR.visible = blink;
+              ud.lightbarB.visible = !blink;
+            }
+          }
+
+          // 展台周边缓慢推进公路流光作为炫酷背景
+          STATE.wz -= 18 * dt;
+          roadUniforms.uWorldPos.value.set(STATE.wx, STATE.wz);
+          updateInfiniteGantries();
+          audio.update(dt, false, 0, false);
+          return;
+        }
+
+        // --- 模式 B：无限车道高速狂飙 ---
+        const carCfg = PLAYER_CARS[STATE.selectedCarIdx];
+
+        // 冷却计时更新与触控遮罩同步
+        ['s1', 's2', 's3', 's4', 's5'].forEach((k, idx) => {
+          if (STATE.cooldowns[k] > 0) STATE.cooldowns[k] = Math.max(0, STATE.cooldowns[k] - dt);
+          const ratio = STATE.cooldowns[k] / STATE.maxCd[k];
+          const btn = [dom.btnSk1, dom.btnSk2, dom.btnSk3, dom.btnSk4, dom.btnSk5][idx];
+          if (btn) btn.querySelector('.cd-mask').style.transform = `scaleY(${ratio.toFixed(3)})`;
+        });
+
+        if (STATE.combo > 0) {
+          STATE.comboTimer -= dt;
+          if (STATE.comboTimer <= 0) STATE.combo = 0;
+        }
+
+        // 1) 转向输入融合（键盘 + 触控按钮 + 屏幕拖拽 + 陀螺仪）
+        let steer = 0;
+        if (STATE.keys.left || STATE.touch.left) steer -= 1;
+        if (STATE.keys.right || STATE.touch.right) steer += 1;
+        if (STATE.touch.dragActive && STATE.cameraMode !== 3) {
+          steer = clamp(steer + STATE.touch.dragSteer, -1.3, 1.3);
+        }
+        if (STATE.gyroEnabled && STATE.gyroReceived) {
+          const deg = STATE.gyroRaw - STATE.gyroOffset;
+          const norm = clamp(deg / 22, -1, 1);
+          const dead = Math.abs(norm) < 0.06 ? 0 : norm;
+          STATE.gyroSmoothed = lerp(STATE.gyroSmoothed, dead * STATE.gyroSens, clamp(dt * 11, 0, 1));
+          steer = clamp(steer + STATE.gyroSmoothed, -1.35, 1.35);
+          dom.gyroDot.style.left = `${50 + clamp(STATE.gyroSmoothed, -1, 1) * 44}%`;
+        }
+
+        // 2) 免费无限氮气 + 极速狂飙速度计算
+        STATE.nitroOn = STATE.keys.nitro || STATE.touch.nitro || STATE.nitroLocked;
+        const maxCruiseMs = (carCfg.topSpeed * 0.64) / 4.1;
+        const maxNitroMs = carCfg.topSpeed / 4.1;
+        let targetSpeed = STATE.nitroOn ? maxNitroMs : maxCruiseMs;
+        if (STATE.keys.up) targetSpeed += 26;
+        if (STATE.keys.down) targetSpeed = Math.max(36, targetSpeed - 42);
+        if (STATE.titanTimer > 0) targetSpeed += 14;
+
+        STATE.speed = lerp(STATE.speed, targetSpeed, clamp(dt * (STATE.nitroOn ? 3.8 : 2.2), 0, 1));
+        const latMax = 38 + (carCfg.handling - 85) * 0.85;
+        STATE.vx = lerp(STATE.vx, steer * latMax, clamp(dt * 11.5, 0, 1));
+        STATE.steerAngle = lerp(STATE.steerAngle, -steer * 0.24, clamp(dt * 11, 0, 1));
+
+        // 无限 X 轴自由穿梭 + 无限 -Z 轴狂飙（绝无边界墙！）
+        STATE.wx += STATE.vx * dt;
+        STATE.wz -= STATE.speed * dt;
+
+        // 3) 垂直跳跃 & 泰山压顶物理
+        if (!STATE.grounded) {
+          STATE.vy -= (STATE.slamming ? 95 : 46) * dt;
+          STATE.wy += STATE.vy * dt;
+          STATE.airFlipAngle += dt * (STATE.slamming ? 14 : 6.2);
+
+          if (STATE.wy <= 0) {
+            STATE.wy = 0;
+            STATE.vy = 0;
+            STATE.grounded = true;
+            dom.jumpLbl.textContent = '跃迁';
+            if (STATE.slamming) {
+              // ☄️ 泰山压顶落地：引爆 34 米火焰地震冲击波！
+              STATE.slamming = false;
+              audio.playSkill('slam');
+              STATE.screenShake = 0.95;
+              STATE.flashAlpha = 0.48;
+              STATE.flashColor = '#f97316';
+              spawnFxSphere(STATE.wx, 0.5, STATE.wz, 0xf97316, 36, 0.52, false);
+              spawnFxSphere(STATE.wx, 0.5, STATE.wz, 0xfde047, 40, 0.58, true);
+              emitExplosion(STATE.wx, 1.0, STATE.wz, 70, [0xf97316, 0xfacc15, 0xef4444, 0xffffff], 14, 46);
+              for (let i = 0; i < trafficCars.length; i++) {
+                const c = trafficCars[i];
+                if (c.wrecked) continue;
+                const d = Math.hypot(c.wx - STATE.wx, c.wz - STATE.wz);
+                if (d < 36) {
+                  triggerTakedown(c, (c.wx - STATE.wx) * 1.4, rand(30, 48), -STATE.speed - 38, '☄️ 压顶');
+                }
+              }
+            }
+          }
+        } else {
+          STATE.airFlipAngle = lerp(STATE.airFlipAngle, 0, clamp(dt * 14, 0, 1));
+        }
+
+        // 4) 技能1 旋风撞击 & 技能4 战神巨无霸持续更新
+        let curScale = 1.0;
+        if (STATE.titanTimer > 0) {
+          STATE.titanTimer = Math.max(0, STATE.titanTimer - dt);
+          curScale = lerp(playerCarContainer.scale.x, 2.2, clamp(dt * 9, 0, 1));
+          titanAuraMesh.visible = true;
+          titanAuraMesh.rotation.y += dt * 3.5;
+          titanAuraMesh.rotation.x += dt * 2.2;
+        } else {
+          curScale = lerp(playerCarContainer.scale.x, 1.0, clamp(dt * 8, 0, 1));
+          titanAuraMesh.visible = false;
+        }
+        playerCarContainer.scale.setScalar(curScale);
+
+        let spinYaw = 0;
+        if (STATE.spinTimer > 0) {
+          STATE.spinTimer = Math.max(0, STATE.spinTimer - dt);
+          const p = 1 - STATE.spinTimer / 0.62;
+          spinYaw = p * Math.PI * 2;
+          spinVortexRing.visible = true;
+          spinVortexRing.rotation.z += dt * 18;
+          spinVortexRing.scale.setScalar(1.2 + Math.sin(p * Math.PI) * 1.6);
+
+          // 旋风期间横扫 13.5 米内所有对手！
+          for (let i = 0; i < trafficCars.length; i++) {
+            const c = trafficCars[i];
+            if (!c.wrecked && Math.hypot(c.wx - STATE.wx, c.wz - STATE.wz) < 13.5 * curScale) {
+              triggerTakedown(c, (c.wx >= STATE.wx ? 1 : -1) * 34, rand(24, 38), -STATE.speed - 40, '🌀 旋风');
+            }
+          }
+        } else {
+          spinVortexRing.visible = false;
+        }
+
+        // 玩家姿态与旋转车轮、等离子尾焰
+        playerCarContainer.position.set(0, STATE.wy, 0);
+        playerCarContainer.rotation.y = STATE.steerAngle + spinYaw;
+        playerCarContainer.rotation.z = lerp(playerCarContainer.rotation.z, -STATE.steerAngle * 0.45, clamp(dt * 10, 0, 1));
+        playerCarContainer.rotation.x = STATE.grounded ? (STATE.nitroOn ? 0.03 : 0) : STATE.airFlipAngle;
+
+        if (playerCarMesh && playerCarMesh.userData) {
+          const ud = playerCarMesh.userData;
+          ud.wheels.forEach((w) => { w.rotation.x -= STATE.speed * dt * 0.7; });
+          ud.flames.forEach((fl) => {
+            fl.visible = STATE.nitroOn || STATE.titanTimer > 0;
+            if (fl.visible) {
+              fl.scale.set(1 + Math.random() * 0.35, 1 + Math.random() * 0.35, (STATE.nitroOn ? 1.45 : 0.9) + Math.random() * 0.75);
+            }
+          });
+          ud.flameMat.color.setHex(STATE.titanTimer > 0 ? 0xfacc15 : (STATE.nitroOn ? 0x38bdf8 : 0xf97316));
+        }
+
+        // 5) 更新无限公路 Shader 与无限龙门架
+        roadUniforms.uWorldPos.value.set(STATE.wx, STATE.wz);
+        updateInfiniteGantries();
+
+        // 6) 更新交通车辆、AI 追逐围剿 & 无敌碾压碰撞检测
+        updateTrafficAndCollisions(dt, curScale, carCfg.smashMult);
+
+        // 7) 更新追踪导弹、粒子池、爆炸球与双流光丝带
+        updateMissiles(dt);
+        updateEffectsAndRibbons(dt);
+
+        // 8) 更新 4 种相机视角
+        updateDrivingCamera(dt);
+
+        // 9) 刷新声效与 HUD
+        const speedKmh = Math.round(STATE.speed * 4.1);
+        audio.update(dt, true, speedKmh, STATE.nitroOn);
+
+        dom.speed.textContent = speedKmh;
+        dom.speed.classList.toggle('nitro-hot', STATE.nitroOn || STATE.titanTimer > 0);
+        dom.rpmFill.style.width = `${clamp((speedKmh / carCfg.topSpeed) * 100, 12, 100)}%`;
+        dom.lane.textContent = `无限车道 #${Math.round(STATE.wx / LANE_WIDTH)}`;
+        dom.nitroPill.textContent = STATE.titanTimer > 0 ? `🔥 巨无霸 ${STATE.titanTimer.toFixed(1)}s` : (STATE.nitroOn ? '⚡ 氮气狂飙中' : '⚡ 无限氮气');
+        dom.takedowns.textContent = `💥 击毁 ${STATE.takedowns}`;
+        dom.score.textContent = `🏆 ${STATE.score.toLocaleString()}`;
+        dom.dist.textContent = `${(Math.abs(STATE.wz) / 1000).toFixed(1)} km`;
+      }
+
+      function updateTrafficAndCollisions(dt, playerScale, smashMult) {
+        const hitW = (1.28 * playerScale * smashMult);
+        const hitL = (2.65 * playerScale * smashMult);
+
+        for (let i = trafficCars.length - 1; i >= 0; i--) {
+          const c = trafficCars[i];
+          if (c.wrecked) {
+            c.wreckAge += dt;
+            c.vy -= 36 * dt;
+            c.wx += c.vx * dt;
+            c.wy += c.vy * dt;
+            c.wz += c.vz * dt;
+            c.mesh.rotation.x += c.rotVx * dt;
+            c.mesh.rotation.y += c.rotVy * dt;
+            c.mesh.rotation.z += c.rotVz * dt;
+
+            // 落地二次剧烈弹跳 + 迸发火花
+            if (c.wy < 0.6) {
+              c.wy = 0.6;
+              if (Math.abs(c.vy) > 5) {
+                c.vy = Math.abs(c.vy) * 0.48;
+                emitExplosion(c.wx, 0.5, c.wz, 10, [0xfacc15, 0xf97316], 5, 16);
+              }
+            }
+            if (c.wreckAge > 2.4 || c.wz > STATE.wz + 45) {
+              scene.remove(c.mesh);
+              trafficCars.splice(i, 1);
+              spawnTrafficCar(180, 440);
+              continue;
+            }
+          } else {
+            // 正常行驶与对手智能行为
+            if (c.type === 'police') {
+              // 警车主动向玩家车道斜向包抄，同时红蓝爆闪！
+              const dx = STATE.wx - c.wx;
+              if (Math.abs(c.wz - STATE.wz) < 110 && Math.abs(dx) < 34) {
+                c.wx += clamp(dx, -1, 1) * 9.5 * dt;
+              }
+              const blink = Math.floor(STATE.time * 14 + i) % 2 === 0;
+              c.mesh.userData.lightbarR.visible = blink;
+              c.mesh.userData.lightbarB.visible = !blink;
+            } else if (c.type === 'boss') {
+              // 皇冠 BOSS 在前方优雅蛇形变道挑衅！
+              c.mesh.userData.crown.rotation.y += dt * 3.2;
+              c.wx += Math.sin(STATE.time * 1.4) * 14 * dt;
+              // 若拉得太远，稍微贴近玩家保持刺激追逐感
+              if (c.wz < STATE.wz - 190) c.vz = -(STATE.speed * 0.88);
+              else c.vz = -Math.max(85, STATE.speed * 0.96);
+            }
+
+            c.wz += c.vz * dt;
+            c.mesh.userData.wheels.forEach((w) => { w.rotation.x -= c.baseSpeed * dt * 0.65; });
+
+            // 超出玩家周围无限车道视野则无缝回收并在前方新车道重生
+            if (c.wz > STATE.wz + 38 || c.wz < STATE.wz - 480 || Math.abs(c.wx - STATE.wx) > 78) {
+              scene.remove(c.mesh);
+              trafficCars.splice(i, 1);
+              spawnTrafficCar(160, 430);
+              continue;
+            }
+
+            // 【100% 无敌碰撞判定】撞到任何车立刻触发狂野击毁，玩家毫不减速！
+            const dx = Math.abs(c.wx - STATE.wx);
+            const dz = Math.abs(c.wz - STATE.wz);
+            if (STATE.wy < 3.4 && dx < (hitW + c.halfW) && dz < (hitL + c.halfL)) {
+              const pushX = (c.wx - STATE.wx) * 12 + STATE.vx * 0.9 + (c.wx >= STATE.wx ? 14 : -14);
+              triggerTakedown(c, pushX, rand(24, 40) * playerScale, -STATE.speed - rand(34, 58), STATE.titanTimer > 0 ? '🔥 碾压' : '');
+            }
+          }
+
+          c.mesh.position.set(c.wx - STATE.wx, c.wy, c.wz - STATE.wz);
+        }
+
+        while (trafficCars.length < MAX_TRAFFIC) {
+          spawnTrafficCar(140, 420);
+        }
+      }
+
+      function updateMissiles(dt) {
+        for (let i = missiles.length - 1; i >= 0; i--) {
+          const m = missiles[i];
+          m.age += dt;
+          if (m.target && !m.target.wrecked) {
+            const dx = m.target.wx - m.wx;
+            const dy = (m.target.wy + 1.2) - m.wy;
+            const dz = m.target.wz - m.wz;
+            const dist = Math.hypot(dx, dy, dz);
+            const spd = Math.max(STATE.speed + 95, 195);
+            m.vx = lerp(m.vx, (dx / Math.max(dist, 0.1)) * spd, clamp(dt * 9.5, 0, 1));
+            m.vy = lerp(m.vy, (dy / Math.max(dist, 0.1)) * spd, clamp(dt * 9.5, 0, 1));
+            m.vz = lerp(m.vz, (dz / Math.max(dist, 0.1)) * spd, clamp(dt * 9.5, 0, 1));
+
+            if (dist < 4.5) {
+              triggerTakedown(m.target, rand(-28, 28), rand(30, 46), -STATE.speed - 45, '🚀 导弹');
+              scene.remove(m.mesh);
+              missiles.splice(i, 1);
+              continue;
+            }
+          } else {
+            // 失去目标则向前高速飞行并搜寻附近任意车辆
+            m.vy = lerp(m.vy, 0, dt * 4);
+            m.vz = -STATE.speed - 110;
+            for (let j = 0; j < trafficCars.length; j++) {
+              const c = trafficCars[j];
+              if (!c.wrecked && Math.hypot(c.wx - m.wx, c.wz - m.wz) < 5.5) {
+                triggerTakedown(c, rand(-26, 26), 34, -STATE.speed - 45, '🚀 导弹');
+                m.age = 99; break;
+              }
+            }
+          }
+
+          m.wx += m.vx * dt;
+          m.wy = Math.max(0.6, m.wy + m.vy * dt);
+          m.wz += m.vz * dt;
+          m.mesh.position.set(m.wx - STATE.wx, m.wy, m.wz - STATE.wz);
+          m.mesh.lookAt(m.mesh.position.x + m.vx, m.mesh.position.y + m.vy, m.mesh.position.z + m.vz);
+
+          if (Math.random() < 0.7) {
+            emitExplosion(m.wx, m.wy, m.wz, 1, [0xfacc15, 0xf97316, 0xffffff], 1, 4);
+          }
+          if (m.age > 2.6) {
+            scene.remove(m.mesh);
+            missiles.splice(i, 1);
+          }
+        }
+      }
+
+      function updateEffectsAndRibbons(dt) {
+        // 粒子池
+        const pPos = particlePoints.geometry.attributes.position;
+        for (let i = 0; i < particlePool.length; i++) {
+          const p = particlePool[i];
+          if (p.life > 0) {
+            p.life -= dt;
+            p.vy -= p.gravity * dt;
+            p.wx += p.vx * dt;
+            p.wy += p.vy * dt;
+            p.wz += p.vz * dt;
+            if (p.wy < 0.1) { p.wy = 0.1; p.vy *= -0.35; }
+            pPos.setXYZ(i, p.wx - STATE.wx, p.wy, p.wz - STATE.wz);
+          } else {
+            pPos.setXYZ(i, 0, -9999, 0);
+          }
+        }
+        pPos.needsUpdate = true;
+
+        // 爆炸球与 EMP 冲击波球
+        for (let i = fxSpheres.length - 1; i >= 0; i--) {
+          const s = fxSpheres[i];
+          s.userData.age += dt;
+          const t = s.userData.age / s.userData.dur;
+          if (t >= 1) {
+            scene.remove(s);
+            s.geometry.dispose();
+            s.material.dispose();
+            fxSpheres.splice(i, 1);
+          } else {
+            s.position.set(s.userData.wx - STATE.wx, s.userData.wy, s.userData.wz - STATE.wz);
+            s.scale.setScalar(1 + t * s.userData.maxScale);
+            s.material.opacity = (1 - t) * 0.8;
+          }
+        }
+
+        // 车尾双流光氮气丝带
+        const showRib = STATE.nitroOn || STATE.titanTimer > 0;
+        const sc = playerCarContainer.scale.x;
+        if (showRib) {
+          ribbonHistL.push({ wx: STATE.wx - 0.85 * sc, wy: STATE.wy + 0.55 * sc, wz: STATE.wz + 2.4 * sc });
+          ribbonHistR.push({ wx: STATE.wx + 0.85 * sc, wy: STATE.wy + 0.55 * sc, wz: STATE.wz + 2.4 * sc });
+          if (ribbonHistL.length > MAX_RIBBON) ribbonHistL.shift();
+          if (ribbonHistR.length > MAX_RIBBON) ribbonHistR.shift();
+        } else {
+          if (ribbonHistL.length > 0) ribbonHistL.shift();
+          if (ribbonHistR.length > 0) ribbonHistR.shift();
+        }
+        const ribCol = STATE.titanTimer > 0 ? 0xfacc15 : 0x38bdf8;
+        ribbonMeshL.material.color.setHex(ribCol);
+        ribbonMeshR.material.color.setHex(ribCol);
+        updateRibbon(ribbonGeoL, ribbonHistL, 0.24 * sc);
+        updateRibbon(ribbonGeoR, ribbonHistR, 0.24 * sc);
+      }
+
+      function updateRibbon(geo, hist, halfW) {
+        const arr = geo.attributes.position.array;
+        if (hist.length < 2) {
+          arr.fill(0);
+          geo.attributes.position.needsUpdate = true;
+          return;
+        }
+        let ptr = 0;
+        for (let i = 0; i < MAX_RIBBON; i++) {
+          const pt = hist[Math.min(i, hist.length - 1)];
+          const w = (i / MAX_RIBBON) * halfW;
+          const lx = pt.wx - STATE.wx;
+          const ly = pt.wy;
+          const lz = pt.wz - STATE.wz;
+          arr[ptr++] = lx - w; arr[ptr++] = ly; arr[ptr++] = lz;
+          arr[ptr++] = lx + w; arr[ptr++] = ly; arr[ptr++] = lz;
+        }
+        geo.attributes.position.needsUpdate = true;
+      }
+
+      /**
+       * 4 种相机视角：0 狂野电影追拍 / 1 贴地极限视角 / 2 车顶POV / 3 360° 自由环绕赏车
+       */
+      function updateDrivingCamera(dt) {
+        const shakeX = (Math.random() - 0.5) * STATE.screenShake * 0.72;
+        const shakeY = (Math.random() - 0.5) * STATE.screenShake * 0.72;
+        const sc = playerCarContainer.scale.x;
+
+        if (STATE.cameraMode === 3) {
+          // 360° 行进中自由赏车大片视角！
+          dom.orbitHint.classList.add('visible');
+          if (!STATE.orbit.dragging) STATE.orbit.yaw += dt * 0.22;
+          STATE.orbit.dist = lerp(STATE.orbit.dist, STATE.orbit.targetDist, clamp(dt * 8, 0, 1));
+          const r = STATE.orbit.dist * (sc > 1.2 ? 1.5 : 1.0);
+          camera.position.set(
+            Math.sin(STATE.orbit.yaw) * Math.cos(STATE.orbit.pitch) * r + shakeX,
+            STATE.wy + 1.4 + Math.sin(STATE.orbit.pitch) * r + shakeY,
+            Math.cos(STATE.orbit.yaw) * Math.cos(STATE.orbit.pitch) * r
+          );
+          camera.fov = lerp(camera.fov, STATE.nitroOn ? 76 : 62, clamp(dt * 6, 0, 1));
+          camera.updateProjectionMatrix();
+          camera.lookAt(0, STATE.wy + 1.0, 0);
+          return;
+        }
+        dom.orbitHint.classList.remove('visible');
+
+        let tx = -STATE.steerAngle * 6.5;
+        let ty = STATE.wy + 3.4 * (sc > 1.2 ? 1.55 : 1.0);
+        let tz = 8.4 * (sc > 1.2 ? 1.5 : 1.0);
+        let lookY = STATE.wy + 1.3;
+        let lookZ = -28;
+        let targetFov = STATE.nitroOn ? 96 : 67 + (STATE.speed - 70) * 0.14;
+
+        if (STATE.cameraMode === 1) {
+          // 贴地极限竞速视角
+          ty = STATE.wy + 1.75 * (sc > 1.2 ? 1.5 : 1.0);
+          tz = 5.8 * (sc > 1.2 ? 1.45 : 1.0);
+          targetFov += 6;
+        } else if (STATE.cameraMode === 2) {
+          // 车顶极速 POV
+          tx = 0; ty = STATE.wy + 1.65 * sc; tz = -0.35; lookY = STATE.wy + 1.35 * sc; lookZ = -48;
+          targetFov += 8;
+        }
+
+        camera.position.x = lerp(camera.position.x, tx + shakeX, clamp(dt * 10, 0, 1));
+        camera.position.y = lerp(camera.position.y, ty + shakeY, clamp(dt * 10, 0, 1));
+        camera.position.z = lerp(camera.position.z, tz, clamp(dt * 10, 0, 1));
+        camera.fov = lerp(camera.fov, clamp(targetFov, 58, 102), clamp(dt * 7.5, 0, 1));
+        camera.updateProjectionMatrix();
+        camera.lookAt(STATE.steerAngle * -3.0, lookY, lookZ);
+      }
+
+      /* ------------------------------------------------------------------------
+         13. 2D FX 特效层：氮气高能速度线 / AI 超跑头顶名牌 / 皇冠 BOSS 追踪箭头 / 碰撞闪光
+         ------------------------------------------------------------------------ */
+      function resizeFx() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        dom.fx.width = Math.floor(window.innerWidth * dpr);
+        dom.fx.height = Math.floor(window.innerHeight * dpr);
+        fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function renderFxOverlay() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        fxCtx.clearRect(0, 0, w, h);
+        if (STATE.phase !== 'playing') return;
+
+        // 1) 免费无限氮气高能径向速度线
+        const speedKmh = STATE.speed * 4.1;
+        const boostInt = clamp((speedKmh - 360) / 280, 0, 1);
+        if (boostInt > 0.05 && !STATE.cinemaMode) {
+          fxCtx.save();
+          const cx = w * 0.5, cy = h * 0.5;
+          const n = Math.floor(18 + boostInt * 32);
+          fxCtx.lineWidth = STATE.nitroOn ? 2.2 : 1.4;
+          fxCtx.strokeStyle = STATE.titanTimer > 0
+            ? `rgba(250, 204, 21, ${boostInt * 0.42})`
+            : (STATE.nitroOn ? `rgba(56, 189, 248, ${boostInt * 0.42})` : `rgba(255, 255, 255, ${boostInt * 0.22})`);
+          for (let i = 0; i < n; i++) {
+            const ang = (i / n) * Math.PI * 2 + Math.sin(STATE.time * 22 + i) * 0.03;
+            const r1 = Math.max(w, h) * (0.31 + ((STATE.time * 5.2 + i * 0.41) % 0.18));
+            const r2 = r1 + 85 + boostInt * 150;
+            fxCtx.beginPath();
+            fxCtx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+            fxCtx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+            fxCtx.stroke();
+          }
+          fxCtx.restore();
+        }
+
+        // 2) AI 超跑名牌 & 👑 皇冠宿敌 BOSS 实时 2D 方位追踪器
+        if (!STATE.cinemaMode) {
+          fxCtx.save();
+          fxCtx.textAlign = 'center';
+          for (let i = 0; i < trafficCars.length; i++) {
+            const c = trafficCars[i];
+            if (c.wrecked || (c.type !== 'supercar' && c.type !== 'boss')) continue;
+            const dist = Math.hypot(c.wx - STATE.wx, c.wz - STATE.wz);
+            if (dist > 260) continue;
+
+            tmpV1.set(c.wx - STATE.wx, c.wy + (c.type === 'boss' ? 3.5 : 2.1), c.wz - STATE.wz).project(camera);
+            if (tmpV1.z < 1) {
+              const sx = clamp((tmpV1.x * 0.5 + 0.5) * w, 58, w - 58);
+              const sy = clamp((-tmpV1.y * 0.5 + 0.5) * h, 78, h - 85);
+
+              if (c.type === 'boss') {
+                fxCtx.fillStyle = 'rgba(245, 158, 11, 0.88)';
+                fxCtx.strokeStyle = '#fef08a';
+                fxCtx.lineWidth = 2;
+                fxCtx.beginPath();
+                fxCtx.roundRect ? fxCtx.roundRect(sx - 66, sy - 24, 132, 26, 13) : fxCtx.rect(sx - 66, sy - 24, 132, 26);
+                fxCtx.fill(); fxCtx.stroke();
+                fxCtx.font = '900 11.5px -apple-system, sans-serif';
+                fxCtx.fillStyle = '#1e1b4b';
+                fxCtx.fillText(`👑 BOSS ${Math.round(dist)}m`, sx, sy - 7);
+              } else if (dist < 130 && tmpV1.x > -0.95 && tmpV1.x < 0.95) {
+                fxCtx.font = '800 11px -apple-system, sans-serif';
+                fxCtx.fillStyle = 'rgba(103, 232, 249, 0.92)';
+                fxCtx.shadowColor = '#0284c7'; fxCtx.shadowBlur = 8;
+                fxCtx.fillText(c.label, sx, sy);
+                fxCtx.shadowBlur = 0;
+              }
+            }
+          }
+          fxCtx.restore();
+        }
+
+        // 3) 击毁/冲击波边缘冲击闪光
+        if (STATE.flashAlpha > 0.01) {
+          fxCtx.save();
+          const grad = fxCtx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
+          grad.addColorStop(0, 'rgba(0,0,0,0)');
+          grad.addColorStop(1, STATE.flashColor);
+          fxCtx.globalAlpha = STATE.flashAlpha;
+          fxCtx.fillStyle = grad;
+          fxCtx.fillRect(0, 0, w, h);
+          fxCtx.restore();
+        }
+      }
+
+      /* ------------------------------------------------------------------------
+         14. 全端交互事件绑定（移动端触控 + 屏幕拖拽转向/360°赏车 + 陀螺仪 + 键盘）
+         ------------------------------------------------------------------------ */
+      function bindHold(el, downFn, upFn) {
+        const down = (e) => { e.preventDefault(); e.stopPropagation(); audio.init(); el.classList.add('pressed'); downFn(); };
+        const up = (e) => { e.preventDefault(); e.stopPropagation(); el.classList.remove('pressed'); upFn(); };
+        el.addEventListener('pointerdown', down);
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointercancel', up);
+        el.addEventListener('pointerleave', up);
+      }
+
+      function setupInteractions() {
+        initSwatches();
+
+        // 开场按钮
+        dom.btnStartPlay.addEventListener('click', startDriving);
+        dom.btnOpenGarageStart.addEventListener('click', openGarage);
+        dom.btnFsStart.addEventListener('click', toggleFullscreen);
+        dom.btnFs.addEventListener('click', toggleFullscreen);
+        dom.btnGarageFs.addEventListener('click', toggleFullscreen);
+        dom.btnGarageHud.addEventListener('click', openGarage);
+        dom.btnGarageDrive.addEventListener('click', startDriving);
+
+        // 车库标签页切换（我的超跑 vs 鉴赏对手车型）
+        dom.tabMyCars.addEventListener('click', () => {
+          STATE.garageTab = 'player';
+          dom.tabMyCars.classList.add('active');
+          dom.tabRivalCars.classList.remove('active');
+          renderGarageCarousel();
+          rebuildShowcaseCar();
+        });
+        dom.tabRivalCars.addEventListener('click', () => {
+          STATE.garageTab = 'rival';
+          dom.tabRivalCars.classList.add('active');
+          dom.tabMyCars.classList.remove('active');
+          renderGarageCarousel();
+          rebuildShowcaseCar();
+        });
+
+        // 4 种相机视角循环切换
+        const camNames = ['🎥 追拍', '🎥 贴地', '🎥 POV', '🎥 360°赏车'];
+        function cycleCamera() {
+          STATE.cameraMode = (STATE.cameraMode + 1) % 4;
+          dom.btnCamHud.textContent = camNames[STATE.cameraMode];
+          dom.btnCamHud.classList.toggle('active', STATE.cameraMode === 3);
+          if (STATE.cameraMode === 3) {
+            STATE.orbit.yaw = 0.7;
+            STATE.orbit.pitch = 0.22;
+            STATE.orbit.targetDist = 9.5;
+            showToast('🎥 360° 赏车视角：拖拽屏幕环绕看车，滚轮缩放！');
+          }
+        }
+        dom.btnCamHud.addEventListener('click', cycleCamera);
+
+        dom.btnCinema.addEventListener('click', () => {
+          STATE.cinemaMode = !STATE.cinemaMode;
+          document.body.classList.toggle('cinema-mode', STATE.cinemaMode);
+          dom.btnCinema.classList.toggle('active', STATE.cinemaMode);
+          showToast(STATE.cinemaMode ? '已进入纯净模式（再次点击或按 H 退出）' : '已恢复 HUD 界面');
+        });
+
+        dom.btnAudio.addEventListener('click', () => {
+          audio.init();
+          audio.setMuted(!audio.muted);
+          dom.btnAudio.textContent = audio.muted ? '🔇' : '🔊';
+          dom.btnAudio.classList.toggle('active', !audio.muted);
+        });
+
+        dom.btnDrawer.addEventListener('click', () => dom.drawer.classList.toggle('closed'));
+
+        // 对手模式、场景主题、电音开关
+        document.querySelectorAll('[data-mode]').forEach((b) => {
+          b.addEventListener('click', () => { setRivalMode(b.dataset.mode); dom.drawer.classList.add('closed'); });
+        });
+        document.querySelectorAll('[data-start-mode]').forEach((b) => {
+          b.addEventListener('click', () => setRivalMode(b.dataset.startMode));
+        });
+        document.querySelectorAll('[data-theme]').forEach((b) => {
+          b.addEventListener('click', () => {
+            applyTheme(parseInt(b.dataset.theme, 10));
+            showToast(`天穹场景切换：${THEMES[STATE.themeIdx].name}`);
+            dom.drawer.classList.add('closed');
+          });
+        });
+        document.querySelectorAll('[data-bgm]').forEach((b) => {
+          b.addEventListener('click', () => {
+            document.querySelectorAll('[data-bgm]').forEach((x) => x.classList.remove('active'));
+            b.classList.add('active');
+            audio.bgmOn = b.dataset.bgm === 'on';
+          });
+        });
+
+        // 手机陀螺仪（支持 iOS 权限请求）
+        async function toggleGyro() {
+          if (STATE.gyroEnabled) {
+            STATE.gyroEnabled = false;
+            dom.btnGyroDrawer.classList.remove('active');
+            dom.btnGyroDrawer.textContent = '开启陀螺仪';
+            dom.gyroBarPill.classList.remove('visible');
+            showToast('已关闭陀螺仪转向');
+            return;
+          }
+          if (typeof DeviceOrientationEvent === 'undefined') {
+            showToast('当前设备不支持陀螺仪，可使用触屏滑动变道');
+            return;
+          }
+          try {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+              const p = await DeviceOrientationEvent.requestPermission();
+              if (p !== 'granted') { showToast('陀螺仪权限未授予'); return; }
+            }
+            STATE.gyroEnabled = true;
+            STATE.gyroOffset = STATE.gyroRaw;
+            dom.btnGyroDrawer.classList.add('active');
+            dom.btnGyroDrawer.textContent = '关闭陀螺仪';
+            dom.gyroBarPill.classList.add('visible');
+            showToast('📱 陀螺仪已启用！倾斜手机即可无限变道');
+          } catch (e) {
+            showToast('陀螺仪启用受限，可继续用触屏操作');
+          }
+        }
+        dom.btnGyroDrawer.addEventListener('click', toggleGyro);
+        dom.btnCalDrawer.addEventListener('click', () => { STATE.gyroOffset = STATE.gyroRaw; showToast('🧭 已校准水平中心'); });
+        dom.btnCalHud.addEventListener('click', () => { STATE.gyroOffset = STATE.gyroRaw; showToast('🧭 已校准水平中心'); });
+        dom.gyroSensRange.addEventListener('input', (e) => {
+          STATE.gyroSens = parseFloat(e.target.value);
+          dom.gyroSensLabel.textContent = `灵敏度 ${STATE.gyroSens.toFixed(1)}x`;
+        });
+        window.addEventListener('deviceorientation', (e) => {
+          if (e.gamma === null && e.beta === null) return;
+          STATE.gyroReceived = true;
+          const land = window.innerWidth > window.innerHeight;
+          const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+          STATE.gyroRaw = land ? (ang === -90 || ang === 270 ? -(e.beta || 0) : (e.beta || 0)) : (e.gamma || 0);
+        });
+
+        // 移动端触控按键与 6 大技能
+        bindHold(dom.touchLeft, () => { STATE.touch.left = true; }, () => { STATE.touch.left = false; });
+        bindHold(dom.touchRight, () => { STATE.touch.right = true; }, () => { STATE.touch.right = false; });
+        bindHold(dom.touchNitro, () => { STATE.touch.nitro = true; }, () => { STATE.touch.nitro = false; });
+
+        dom.btnNitroLock.addEventListener('click', () => {
+          audio.init();
+          STATE.nitroLocked = !STATE.nitroLocked;
+          dom.btnNitroLock.classList.toggle('active', STATE.nitroLocked);
+          dom.touchNitro.classList.toggle('locked', STATE.nitroLocked);
+          dom.btnNitroLock.textContent = STATE.nitroLocked ? '🔒 氮气全开' : '🔓 氮气锁定';
+        });
+
+        const bindTap = (el, fn) => {
+          el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); el.classList.add('pressed'); fn(); });
+          el.addEventListener('pointerup', () => el.classList.remove('pressed'));
+          el.addEventListener('pointercancel', () => el.classList.remove('pressed'));
+        };
+        bindTap(dom.btnSk1, triggerSkill1Spin);
+        bindTap(dom.btnSk2, triggerSkill2EMP);
+        bindTap(dom.btnSk3, triggerSkill3Missiles);
+        bindTap(dom.btnSk4, triggerSkill4Titan);
+        bindTap(dom.btnSk5, triggerSkill5JumpOrSlam);
+
+        // 画布指针交互：展厅/360°视角中自由环绕看车；正常驾驶中任意滑动丝滑变道！
+        dom.webgl.addEventListener('pointerdown', (e) => {
+          if (!dom.drawer.classList.contains('closed')) dom.drawer.classList.add('closed');
+          if (STATE.phase !== 'playing' || STATE.cameraMode === 3) {
+            STATE.orbit.dragging = true;
+            STATE.orbit.lastX = e.clientX;
+            STATE.orbit.lastY = e.clientY;
+          } else {
+            STATE.touch.dragActive = true;
+            STATE.touch.dragId = e.pointerId;
+            STATE.touch.dragStartX = e.clientX;
+            STATE.touch.dragSteer = 0;
+          }
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (STATE.orbit.dragging) {
+            const dx = e.clientX - STATE.orbit.lastX;
+            const dy = e.clientY - STATE.orbit.lastY;
+            STATE.orbit.lastX = e.clientX;
+            STATE.orbit.lastY = e.clientY;
+            STATE.orbit.yaw -= dx * 0.009;
+            STATE.orbit.pitch = clamp(STATE.orbit.pitch + dy * 0.006, 0.05, 0.95);
+            return;
+          }
+          if (STATE.touch.dragActive && e.pointerId === STATE.touch.dragId) {
+            STATE.touch.dragSteer = clamp((e.clientX - STATE.touch.dragStartX) / (window.innerWidth * 0.16), -1.3, 1.3);
+          }
+        });
+
+        const endPointer = (e) => {
+          STATE.orbit.dragging = false;
+          if (STATE.touch.dragActive && (e.pointerId === undefined || e.pointerId === STATE.touch.dragId)) {
+            STATE.touch.dragActive = false;
+            STATE.touch.dragSteer = 0;
+          }
+        };
+        window.addEventListener('pointerup', endPointer);
+        window.addEventListener('pointercancel', endPointer);
+
+        // 滚轮缩放（360° 车库/行进赏车特写细节）
+        dom.webgl.addEventListener('wheel', (e) => {
+          if (STATE.phase !== 'playing' || STATE.cameraMode === 3) {
+            STATE.orbit.targetDist = clamp(STATE.orbit.targetDist + e.deltaY * 0.008, 4.8, 16.5);
+          }
+        }, { passive: true });
+
+        // 桌面端完整键盘操控
+        window.addEventListener('keydown', (e) => {
+          const c = e.code;
+          if (c === 'KeyA' || c === 'ArrowLeft') STATE.keys.left = true;
+          if (c === 'KeyD' || c === 'ArrowRight') STATE.keys.right = true;
+          if (c === 'KeyW' || c === 'ArrowUp') STATE.keys.up = true;
+          if (c === 'KeyS' || c === 'ArrowDown') STATE.keys.down = true;
+          if (c === 'ShiftLeft' || c === 'ShiftRight') STATE.keys.nitro = true;
+          if (c === 'Space') { e.preventDefault(); triggerSkill5JumpOrSlam(); }
+          if (c === 'Digit1') triggerSkill1Spin();
+          if (c === 'Digit2') triggerSkill2EMP();
+          if (c === 'Digit3') triggerSkill3Missiles();
+          if (c === 'Digit4') triggerSkill4Titan();
+          if (c === 'KeyC' && STATE.phase === 'playing') cycleCamera();
+          if (c === 'KeyF') toggleFullscreen();
+          if (c === 'KeyG') { if (STATE.phase === 'garage') startDriving(); else openGarage(); }
+          if (c === 'KeyH' && STATE.phase === 'playing') dom.btnCinema.click();
+          if (c === 'KeyM') dom.btnAudio.click();
+        });
+
+        window.addEventListener('keyup', (e) => {
+          const c = e.code;
+          if (c === 'KeyA' || c === 'ArrowLeft') STATE.keys.left = false;
+          if (c === 'KeyD' || c === 'ArrowRight') STATE.keys.right = false;
+          if (c === 'KeyW' || c === 'ArrowUp') STATE.keys.up = false;
+          if (c === 'KeyS' || c === 'ArrowDown') STATE.keys.down = false;
+          if (c === 'ShiftLeft' || c === 'ShiftRight') STATE.keys.nitro = false;
+        });
+
+        window.addEventListener('resize', () => {
+          if (!renderer || !camera) return;
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          resizeFx();
+        });
+      }
+
+      /* ------------------------------------------------------------------------
+         15. 窗口加载完成后启动 60fps 主循环
+         ------------------------------------------------------------------------ */
+      let lastTs = 0;
+      function animate(ts) {
+        requestAnimationFrame(animate);
+        if (!lastTs) lastTs = ts;
+        const dt = clamp((ts - lastTs) / 1000, 0.001, 0.05);
+        lastTs = ts;
+
+        stepSimulation(dt);
+        renderer.render(scene, camera);
+        renderFxOverlay();
+      }
+
+      window.onload = function () {
+        if (initScene()) {
+          setupInteractions();
+          requestAnimationFrame(animate);
+        }
+      };
+    })();
+  </script>
+</body>
+</html>
